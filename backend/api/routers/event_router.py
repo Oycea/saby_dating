@@ -20,7 +20,7 @@ def get_event(event_id: int) -> tuple:
                     raise HTTPException(status_code=404, detail='Event not found')
                 return event
             finally:
-                print('Ok')
+                print('Connection closed')
 
 
 @event_router.post('/create_event', name='Create new event')
@@ -31,9 +31,12 @@ def create_event(title: str, description: str, place: str, tags: list[str],
         with connection.cursor() as cursor:
             try:
                 cursor.execute(
+                    "WITH new_event AS("
                     "INSERT INTO events (title, description, place, created_at, datetime, creator_id, users_limit, "
-                    "online) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;",
-                    (title, description, place, datetime.now, date, creator_id, users_limit, is_distant))
+                    "online) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                    "RETURNING *)"
+                    "SELECT * FROM new_event",
+                    (title, description, place, datetime.now(), date, creator_id, users_limit, is_distant))
                 event = cursor.fetchone()
 
                 for i in range(len(tags)):
@@ -51,7 +54,7 @@ def create_event(title: str, description: str, place: str, tags: list[str],
                 return {'message': f'Event {event[0]} created successfully',
                         'event info': f'{event}'}
             finally:
-                print('Ok')
+                print('Connection closed')
 
 
 @event_router.delete('/delete_event/{event_id}', name='Delete event by id')
@@ -68,4 +71,4 @@ def delete_event(event_id: int) -> dict[str, str]:
                 return {'message': f'Event {event_id} deleted successfully',
                         'deleted event info': f'{event}'}
             finally:
-                print('Ok')
+                print('Connection closed')
