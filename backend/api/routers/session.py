@@ -12,17 +12,7 @@ conn_params = {
 def open_conn():
     try:
         conn = psycopg2.connect(**conn_params)
-        cursor = conn.cursor()
         print('Connection opened')
-        return cursor, conn
+        return conn
     except:
         print('Can`t establish connection to database')
-
-
-def close_conn(cursor, conn):
-    try:
-        cursor.close()
-        conn.close()
-        print('Connection closed')
-    except:
-        print('Can`t close connection')
