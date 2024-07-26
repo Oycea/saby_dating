@@ -1,0 +1,12 @@
+<div id="chat-messages" style="text-align: center">
+    <h1>Уютненький чатик</h1>
+    <form action="" onsubmit="sendMessage(event)">
+        <input type="text" id="messageText" autocomplete="off"/>
+        <button type="submit">Отправить</button>
+    </form>
+    <ul id='messages' style="list-style: none">
+        {% for message in text %}
+            <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+</div>

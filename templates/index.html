@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<head>
+    <title>Чат</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+<div id="chat-messages" style="text-align: center">
+    <h1>Уютненький чатик</h1>
+    <form action="" onsubmit="sendMessage(event)">
+        <input type="text" id="messageText" autocomplete="off"/>
+        <button type="submit">Отправить</button>
+    </form>
+    <ul id='messages' style="list-style: none">
+        {% for message in text %}
+            <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+</div>
+<script>
+    let ws = new WebSocket(`ws://localhost:8000/chat/ws`);
+    {#ws.onmessage = function(event) {#}
+    {#    var messages = document.getElementById('messages')#}
+    {#    var message = document.createElement('li')#}
+    {#    var content = document.createTextNode(event.data)#}
+    {#    message.appendChild(content)#}
+    {#    messages.appendChild(message)#}
+    {#};#}
+    function sendMessage(event) {
+        event.preventDefault()
+        let input = document.getElementById("messageText")
+        ws.send(input.value)
+        input.value = ''
+        updateChat();
+    }
+    function updateChat() {
+        $.ajax({
+            type: "GET",
+            url: "{{ url_for('get_chat_messages')}}",
+            success: function(data) {
+                $("#chat-messages").html(data);
+            }
+        });
+    }
+</script>
+</body>
+{% endblock %}
