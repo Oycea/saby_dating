@@ -1,18 +1,18 @@
 import psycopg2
 
-conn_params = {
-    'dbname': 'sabytin',
-    'user': 'sabytin_user',
-    'password': 'uhmWgCHZsBMaHisGHJbKagzN8t6irG7k',
-    'host': 'dpg-cqgk6j2j1k6c73dfacq0-a.frankfurt-postgres.render.com',
-    'port': '5432'
-}
+from config import *
 
 
 def open_conn():
     try:
-        conn = psycopg2.connect(**conn_params)
+        connection = psycopg2.connect(
+            dbname=POSTGRES_NAME,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
+        )
         print('Connection opened')
-        return conn
+        return connection
     except:
         print('Can`t establish connection to database')

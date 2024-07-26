@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from routers.event_router import event_router
 
 
+
 def create_app() -> FastAPI:
     new_app = FastAPI(
         title='Sabytin',

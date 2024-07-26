@@ -42,16 +42,17 @@ def create_event(title: str, description: str, place: str, tags: list[str],
                 for i in range(len(tags)):
                     cursor.execute("SELECT id FROM tags WHERE title=%s", (tags[i],))
                     tag = cursor.fetchone()
-
                     cursor.execute("INSERT INTO events_tags VALUES (%s, %s);", (event[0], tag[0]))
 
                 for i in range(len(users)):
                     cursor.execute("INSERT INTO events_users VALUES (%s, %s);", (event[0], users[i]))
 
+                cursor.execute("INSERT INTO events_users VALUES (%s, %s);", (event[0], event[6]))
+
                 for i in range(len(images_url)):
                     cursor.execute("INSERT INTO events_images VALUES (%s, %s);", (event[0], images_url[i]))
 
-                return {'message': f'Event {event[0]} created successfully',
+                return {'message': f'Event with id {event[0]} created successfully',
                         'event info': f'{event}'}
             finally:
                 print('Connection closed')
