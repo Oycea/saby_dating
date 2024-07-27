@@ -100,7 +100,7 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
             except Exception as ex:
                 raise ex
             finally:
-                print('Connection closed')
+                print('Connection closed ')
 
 
 @event_router.delete('/delete_event/{event_id}', name='Delete event by id')
