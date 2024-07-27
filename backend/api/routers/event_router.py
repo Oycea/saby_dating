@@ -16,17 +16,17 @@ def get_event(event_id: int) -> tuple:
                 cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
                 event = cursor.fetchone()
 
-                if not event:
-                    raise HTTPException(status_code=404, detail='Event not found')
                 return event
+            except Exception as ex:
+                raise ex
             finally:
                 print('Connection closed')
 
 
-@event_router.post('/create_event', name='Create new event')
+@event_router.post('/create_event/', name='Create new event')
 def create_event(title: str, description: str, place: str, tags: list[str],
-                 users: list[int], creator_id: int, date: datetime, is_distant: bool = False,
-                 images_url: Optional[list[str]] = None, users_limit: Optional[int] = None) -> dict[str, str]:
+                 users: list[int], date: datetime, creator_id: int, images_url: Optional[list[str]] = None,
+                 users_limit: Optional[int] = None, is_distant: bool = False) -> dict[str, str]:
     with open_conn() as connection:
         with connection.cursor() as cursor:
             try:
@@ -54,6 +54,51 @@ def create_event(title: str, description: str, place: str, tags: list[str],
 
                 return {'message': f'Event with id {event[0]} created successfully',
                         'event info': f'{event}'}
+            except Exception as ex:
+                raise ex
+            finally:
+                print('Connection closed')
+
+
+@event_router.put('/edit_event_info/{event_id}/', name='Edit event by id')
+def edit_event_info(event_id: int, title: Optional[str] = None,
+                    description: Optional[str] = None,
+                    place: Optional[str] = None,
+                    date: Optional[datetime] = None, creator_id: Optional[int] = None,
+                    users_limit: Optional[int] = None, is_distant: Optional[bool] = None) -> tuple:
+    with open_conn() as connection:
+        with connection.cursor() as cursor:
+            try:
+                cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
+                event = cursor.fetchone()
+
+                if not title:
+                    title = event[1]
+                if not description:
+                    description = event[2]
+                if not place:
+                    place = event[3]
+                if not date:
+                    date = event[5]
+                if not creator_id:
+                    creator_id = event[6]
+                if not users_limit:
+                    users_limit = event[7]
+                if not is_distant:
+                    is_distant = event[8]
+
+                cursor.execute(
+                    "UPDATE events SET (title, description, place, datetime, creator_id, users_limit,"
+                    "online)="
+                    "(%s, %s, %s, %s, %s, %s, %s)"
+                    "WHERE id=%s "
+                    "RETURNING *",
+                    (title, description, place, date, creator_id, users_limit, is_distant, event_id))
+                event = cursor.fetchone()
+
+                return event
+            except Exception as ex:
+                raise ex
             finally:
                 print('Connection closed')
 
@@ -66,10 +111,9 @@ def delete_event(event_id: int) -> dict[str, str]:
                 cursor.execute('DELETE FROM events WHERE id=%s RETURNING *', (event_id,))
                 event = cursor.fetchone()
 
-                if not event:
-                    raise HTTPException(status_code=404, detail='Event not found')
-
                 return {'message': f'Event {event_id} deleted successfully',
                         'deleted event info': f'{event}'}
+            except Exception as ex:
+                raise ex
             finally:
                 print('Connection closed')
