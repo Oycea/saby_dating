@@ -1,6 +1,10 @@
 import psycopg2
+import psycopg2.extras
+import logging
 
-from config import *
+from config import POSTGRES_NAME, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT
+
+logger = logging.getLogger(__name__)
 
 
 def open_conn():
@@ -12,7 +16,7 @@ def open_conn():
             host=POSTGRES_HOST,
             port=POSTGRES_PORT
         )
-        print('Connection opened')
         return connection
-    except:
-        print('Can`t establish connection to database')
+    except psycopg2.Error as e:
+        logger.error(f"Can't establish connection to database: {e}")
+        raise e

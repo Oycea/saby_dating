@@ -14,9 +14,26 @@ def get_event(event_id: int) -> list:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
                 event = cursor.fetchone()
-                if event is None:
+                if not event:
                     raise HTTPException(status_code=404, detail="Event not found")
                 return event
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@event_router.get('/get_event_users/{event_id}', name='Get event users')
+def get_event_users(event_id: int) -> list[int]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT user_id FROM events_users WHERE event_id=%s", (event_id,))
+                users = cursor.fetchall()
+
+                if not users:
+                    raise HTTPException(status_code=404, detail="Users or event not found")
+
+                users_id = [user[0] for user in users]
+                return users_id
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
