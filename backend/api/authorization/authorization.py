@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import psycopg2
 from psycopg2 import sql
 from email_validator import validate_email, EmailNotValidError
-from typing import Generator
+from typing import Generator, Optional, Dict
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from jose import JWTError, jwt
@@ -45,15 +45,15 @@ app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def get_password_hash(password):
+def get_password_hash(password: str) -> str:
     return argon2.hash(password)
 
 
-def verify_password(plain_password, hashed_password):
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     return argon2.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -65,7 +65,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
+def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -82,7 +82,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Generator = Depends(get_db)):
+def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[str, str]:
     email = user.email
     password = user.password
 
@@ -129,7 +129,7 @@ def register(user: UserCreate, db: Generator = Depends(get_db)):
 
 @app.post("/login", response_model=dict)
 def login(form_data: OAuth2PasswordRequestForm = Depends(),
-          db: Generator = Depends(get_db)):
+          db: Generator = Depends(get_db)) -> Dict[str, str]:
     email = form_data.username
     password = form_data.password
 
@@ -161,23 +161,23 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),
 
 
 @app.get("/")
-def read_root():
+def read_root() -> Dict[str, str]:
     return {"message": "Welcome to the user registration and login system"}
 
 
-@app.get("/users/me", response_model=dict)
+@app.get("/users/me", response_model=dict[str, str])
 def read_users_me(current_user: str = Depends(get_current_user)):
     return {"email": current_user}
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, max_attempts: int, period: int):
+    def __init__(self, app, max_attempts: int, period: int) -> None:
         super().__init__(app)
         self.max_attempts = max_attempts
         self.period = period
         self.attempts = {}
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         client_ip = request.client.host
         current_time = time.time()
 
