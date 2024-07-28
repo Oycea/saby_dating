@@ -1,10 +1,11 @@
-fastapi
+fastapi~=0.111.1
 uvicorn
 asyncpg
 psycopg2-binary
-passlib[bcrypt]
+passlib[bcrypt]~=1.7.4
 python-jose
-pydantic
-jose
-starlette
-datetime
+pydantic~=2.8.2
+jose~=1.0.0
+starlette~=0.37.2
+datetime~=5.5
+python-dotenv~=1.0.1
