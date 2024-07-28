@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+starlette
+psycopg2
+pydantic
+passlib
+email_validator
+typing
+websockets
+Jinja2

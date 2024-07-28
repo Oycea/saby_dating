@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.templating import Jinja2Templates
 from session import get_database_connection
 
 router = APIRouter(
-    prefix="/pages",
+    prefix="",
     tags=["Pages"]
 )
 
@@ -12,28 +12,17 @@ templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/chat")
-def get_chat_page(request: Request):
-    conn = get_database_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT "text" FROM messages')
-    text = cursor.fetchall()
-    text_list = [row[0] for row in text]
-    cursor.close()
-    conn.close()
-    return templates.TemplateResponse("index.html", {"request": request, "text": text_list})
-    # conn = get_database_connection()
-    # text = conn.fetch('SELECT "text" FROM messages')
-    # text_list = [row['text'] for row in text]
-    # conn.close()
+def get_chat_page(request: Request, offset: int = 0, limit: int = 30):
+    try:
+        with get_database_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT "text" FROM messages ORDER BY id DESC LIMIT %s OFFSET %s', (limit, offset))
+                limited_text = cursor.fetchall()
+                limited_text_list = [row[0] for row in limited_text]
+                cursor.execute('SELECT "text" FROM messages')
+                full_text = cursor.fetchall()
+                full_text_list = [row[0] for row in full_text]
+                return templates.TemplateResponse("index.html", {"request": request, "limited_text_list": limited_text_list, "full_text_list": full_text_list})
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
 
-
-@router.get('/get_chat_messages')
-def get_chat_messages(request: Request):
-    conn = get_database_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT "text" FROM messages')
-    text = cursor.fetchall()
-    text_list = [row[0] for row in text]
-    cursor.close()
-    conn.close()
-    return templates.TemplateResponse('get_chat_messages.html', {"request": request, "text": text_list})
