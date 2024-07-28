@@ -1,9 +1,10 @@
 fastapi
 uvicorn
-sqlalchemy
 asyncpg
 psycopg2-binary
 passlib[bcrypt]
 python-jose
 pydantic
-jwt
+jose
+starlette
+datetime
