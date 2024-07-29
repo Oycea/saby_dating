@@ -25,12 +25,6 @@ class UserCreate(BaseModel):
     communication_goal: str
 
 
-class User(BaseModel):
-    id: int
-    username: str
-    email: str
-    
-    
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -72,7 +66,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def get_current_user(token: str = Depends(oauth2_scheme),
-                     db: Generator = Depends(get_db)) -> User:
+                     db: Generator = Depends(get_db)) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -92,7 +86,7 @@ def get_current_user(token: str = Depends(oauth2_scheme),
         if result is None:
             raise credentials_exception
         user_id, user_email, username = result
-        return User(id=user_id, email=user_email, username=username)
+        return {"id": user_id, "username": username, "email": user_email}
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
@@ -180,7 +174,7 @@ def read_root() -> Dict[str, str]:
 
 
 @app.get("/users/me", response_model=dict[str, str])
-def read_users_me(current_user: User = Depends(get_current_user)) -> User:
+def read_users_me(current_user: dict = Depends(get_current_user)):
     return current_user
 
 
