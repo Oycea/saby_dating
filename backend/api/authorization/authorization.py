@@ -25,6 +25,12 @@ class UserCreate(BaseModel):
     communication_goal: str
 
 
+class User(BaseModel):
+    id: int
+    username: str
+    email: str
+    
+    
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -65,7 +71,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_user(token: str = Depends(oauth2_scheme),
+                     db: Generator = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -78,7 +85,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    return email
+
+    with db.cursor() as cur:
+        cur.execute(sql.SQL("SELECT id, email, name FROM users WHERE email = %s"), [email])
+        result = cur.fetchone()
+        if result is None:
+            raise credentials_exception
+        user_id, user_email, username = result
+        return User(id=user_id, email=user_email, username=username)
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
@@ -166,8 +180,8 @@ def read_root() -> Dict[str, str]:
 
 
 @app.get("/users/me", response_model=dict[str, str])
-def read_users_me(current_user: str = Depends(get_current_user)):
-    return {"email": current_user}
+def read_users_me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
