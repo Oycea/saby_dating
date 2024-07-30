@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from routers.event_router import event_router
+from routers.algorithm_router import algorithm_router
 
 
 def create_app() -> FastAPI:
@@ -12,6 +13,7 @@ def create_app() -> FastAPI:
     )
 
     new_app.include_router(event_router)
+    new_app.include_router(algorithm_router)
 
     return new_app
 
