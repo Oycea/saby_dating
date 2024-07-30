@@ -126,7 +126,6 @@ def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int]:
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
-
 # @algorithm_router.post('/list_questionnaires/{user_id}/}', name='list questionnaires')
 # def list_questionnaires(user_id:int, city:str, age:int, gender:str, ) -> List[int]:
 #     try:
