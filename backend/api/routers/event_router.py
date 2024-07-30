@@ -133,7 +133,7 @@ def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[i
 
 
 @event_router.post('/add_tag_to_the_event/{event_id}/{tag_title}', name='Add tag to the event by event id')
-def add_tag_to_the_event(event_id: int, tag_title: str):
+def add_tag_to_the_event(event_id: int, tag_title: str) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -164,6 +164,22 @@ def add_tag_to_the_event(event_id: int, tag_title: str):
                 return {'size': len(tags), 'event tags': tags}
     except psycopg2.IntegrityError:
         raise HTTPException(status_code=400, detail="Tag already added to the event or invalid tag_title/event_id")
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@event_router.post('/add_tag/', name='Add tag')
+def add_tag(tag_title: str) -> dict[str, str]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                # Добавление тега
+                cursor.execute("INSERT INTO tags (title) VALUES (%s) RETURNING id", (tag_title,))
+                tag_id = cursor.fetchone()
+
+                return {'message': f'Tag {tag_title} with id {tag_id[0]} added successfully'}
+    except psycopg2.IntegrityError:
+        raise HTTPException(status_code=400, detail="Tag already added to the tags")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
