@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import psycopg2
 from psycopg2 import sql
 from email_validator import validate_email, EmailNotValidError
-from typing import Generator, Optional, Dict
+from typing import Generator, Optional, Dict, Any
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from jose import JWTError, jwt
@@ -206,6 +206,11 @@ def read_root() -> Dict[str, str]:
 def read_user_me(
         current_user: UserRead = Depends(get_current_user)) -> UserRead:
     return current_user
+
+
+@app.get("/user/me/dict")
+def read_user_me_dict(current_user: UserRead = Depends(get_current_user)) -> Dict[str, Any]:
+    return current_user.dict()
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
