@@ -12,6 +12,7 @@ def create_app() -> FastAPI:
     )
 
     new_app.include_router(algorithm_router)
+    
 
     return new_app
 
