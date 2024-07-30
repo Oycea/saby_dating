@@ -25,6 +25,16 @@ class UserCreate(BaseModel):
     communication_goal: str
 
 
+class UserRead(BaseModel):
+    email: EmailStr
+    name: str
+    date_of_birth: str
+    gender: str
+    city: str
+    position: str
+    communication_goal: str
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -38,11 +48,11 @@ def get_db():
         conn.close()
 
 
-SECRET_KEY = ""
-ALGORITHM = ""
+SECRET_KEY = "secret"
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 app = FastAPI()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 def get_password_hash(password: str) -> str:
@@ -53,7 +63,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return argon2.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict,
+                        expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -66,7 +77,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def get_current_user(token: str = Depends(oauth2_scheme),
-                     db: Generator = Depends(get_db)) -> dict:
+                     db: Generator = Depends(get_db)) -> UserRead:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -80,22 +91,41 @@ def get_current_user(token: str = Depends(oauth2_scheme),
     except JWTError:
         raise credentials_exception
 
-    with db.cursor() as cur:
-        cur.execute(sql.SQL("SELECT id, email, name FROM users WHERE email = %s"), [email])
-        result = cur.fetchone()
-        if result is None:
-            raise credentials_exception
-        user_id, user_email, username = result
-        return {"id": user_id, "username": username, "email": user_email}
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "SELECT email, name, date_of_birth, gender, city, position, communication_goal FROM users WHERE email = %s"),
+                [email]
+            )
+            result = cur.fetchone()
+            if result is None:
+                raise credentials_exception
+
+            user = UserRead(
+                email=result[0],
+                name=result[1],
+                date_of_birth=result[2].strftime('%Y-%m-%d'),
+                gender=result[3],
+                city=result[4],
+                position=result[5],
+                communication_goal=result[6],
+            )
+            return user
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[str, str]:
+def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[
+    str, str]:
     email = user.email
     password = user.password
 
     try:
-        # Проверка корректности email
         valid = validate_email(email)
         email = valid.email
     except EmailNotValidError as e:
@@ -106,7 +136,6 @@ def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[str, str
 
     try:
         with db.cursor() as cur:
-            # Проверка email
             cur.execute(sql.SQL("SELECT id FROM users WHERE email = %s"),
                         [email])
             if cur.fetchone():
@@ -135,7 +164,7 @@ def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[str, str
         )
 
 
-@app.post("/login", response_model=dict)
+@app.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(),
           db: Generator = Depends(get_db)) -> Dict[str, str]:
     email = form_data.username
@@ -173,8 +202,9 @@ def read_root() -> Dict[str, str]:
     return {"message": "Welcome to the user registration and login system"}
 
 
-@app.get("/users/me", response_model=dict[str, str])
-def read_users_me(current_user: dict = Depends(get_current_user)):
+@app.get("/user/me", response_model=UserRead)
+def read_user_me(
+        current_user: UserRead = Depends(get_current_user)) -> UserRead:
     return current_user
 
 
