@@ -61,6 +61,7 @@ def find_matches(user_id: int) -> list[int]:
                 matches = cursor.fetchall()
                 if not matches:
                     raise HTTPException(status_code=404, detail="Matches not found")
+                matches = [match[0] for match in matches]
                 return matches
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -76,7 +77,7 @@ def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | list[
                 all_likes = cursor.fetchall()
             if not all_likes:
                 raise HTTPException(status_code=404, detail="user_like_from/user_like_to not found")
-            likes_to_user = [x[1] for x in all_likes]
+            likes_to_user = [x[0] for x in all_likes]
             return {'size': len(all_likes), f'likes to user{user_like_from}': likes_to_user}
     except psycopg2.IntegrityError as ex:
         raise HTTPException(status_code=400, detail="The user has already been liked")
@@ -94,7 +95,7 @@ def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int |
                 all_dislikes = cursor.fetchall()
             if not all_dislikes:
                 raise HTTPException(status_code=404, detail="user_dislike_from/user_dislike_to not found")
-            dislikes_to_user = [x[1] for x in all_dislikes]
+            dislikes_to_user = [x[0] for x in all_dislikes]
             return {'size': len(all_dislikes), f'likes to user{user_dislike_from}': dislikes_to_user}
     except psycopg2.IntegrityError as ex:
         raise HTTPException(status_code=400, detail="The user has already been disliked")
