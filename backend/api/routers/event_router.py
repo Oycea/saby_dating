@@ -77,7 +77,7 @@ def get_event_tags(event_id: int) -> dict[str, int | list[str]]:
 @event_router.post('/create_event/', name='Create new event')
 def create_event(title: str, description: str, place: str, tags: List[str],
                  date: datetime, creator_id: int, images_url: Optional[List[str]] = None,
-                 users_limit: Optional[int] = None, is_distant: bool = False) -> dict[str, str]:
+                 users_limit: Optional[int] = None, is_distant: bool = False) -> dict[str, str | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:

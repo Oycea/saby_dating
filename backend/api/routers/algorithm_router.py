@@ -8,7 +8,7 @@ algorithm_router = APIRouter(prefix='/alorithm', tags=['Algorithm'])
 
 
 @algorithm_router.get('/get_all_users/', name='get all users')
-def get_all_users() -> list:
+def get_all_users() -> list[list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -55,12 +55,13 @@ def find_matches(user_id: int) -> list[int]:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "SELECT user_id_to FROM likes WHERE user_id_to IN (SELECT user_id_from FROM likes WHERE user_id_to=%s)",
+                    "SELECT user_id_to FROM likes WHERE user_id_to IN (SELECT user_id_from FROM likes WHERE "
+                    "user_id_to=%s)",
                     (user_id,))
-                mathes = cursor.fetchall()
-                if not mathes:
+                matches = cursor.fetchall()
+                if not matches:
                     raise HTTPException(status_code=404, detail="Matches not found")
-                return mathes
+                return matches
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
