@@ -1,15 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from passlib.hash import argon2
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm
 import psycopg2
 from psycopg2 import sql
 from email_validator import validate_email, EmailNotValidError
-from typing import Generator, Optional, Dict, Any
+from typing import Generator, Dict, Any
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
-from jose import JWTError, jwt
-from datetime import datetime, timedelta
 
 DATABASE_URL = "postgresql://postgres:umbrella@localhost:5432/mydb"
 
@@ -25,8 +23,9 @@ class UserCreate(BaseModel):
     communication_goal: str
 
 
-class UserRead(BaseModel):
-    email: EmailStr
+class User(BaseModel):
+    id: int
+    email: str
     name: str
     date_of_birth: str
     gender: str
@@ -35,9 +34,7 @@ class UserRead(BaseModel):
     communication_goal: str
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+security = HTTPBasic()
 
 
 def get_db():
@@ -48,11 +45,7 @@ def get_db():
         conn.close()
 
 
-SECRET_KEY = "secret"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 app = FastAPI()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 def get_password_hash(password: str) -> str:
@@ -63,53 +56,29 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return argon2.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict,
-                        expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-def get_current_user(token: str = Depends(oauth2_scheme),
-                     db: Generator = Depends(get_db)) -> UserRead:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
+def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: Generator = Depends(get_db)):
     try:
         with db.cursor() as cur:
             cur.execute(
-                sql.SQL(
-                    "SELECT email, name, date_of_birth, gender, city, position, communication_goal FROM users WHERE email = %s"),
-                [email]
+                sql.SQL("SELECT id, email, name, date_of_birth, gender, city, position, communication_goal, hashed_password FROM users WHERE email = %s"),
+                [credentials.username]
             )
             result = cur.fetchone()
-            if result is None:
-                raise credentials_exception
-
-            user = UserRead(
-                email=result[0],
-                name=result[1],
-                date_of_birth=result[2].strftime('%Y-%m-%d'),
-                gender=result[3],
-                city=result[4],
-                position=result[5],
-                communication_goal=result[6],
+            if result is None or not verify_password(credentials.password, result[8]):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                    headers={"WWW-Authenticate": "Basic"},
+                )
+            user = User(
+                id=result[0],
+                email=result[1],
+                name=result[2],
+                date_of_birth=result[3].strftime('%Y-%m-%d'),
+                gender=result[4],
+                city=result[5],
+                position=result[6],
+                communication_goal=result[7]
             )
             return user
     except Exception as e:
@@ -119,13 +88,13 @@ def get_current_user(token: str = Depends(oauth2_scheme),
         )
 
 
-@app.post("/register", status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[
-    str, str]:
+@app.post("/register", status_code=status.HTTP_200_OK)
+def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[str, str]:
     email = user.email
     password = user.password
 
     try:
+        # Проверка корректности email
         valid = validate_email(email)
         email = valid.email
     except EmailNotValidError as e:
@@ -136,8 +105,8 @@ def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[
 
     try:
         with db.cursor() as cur:
-            cur.execute(sql.SQL("SELECT id FROM users WHERE email = %s"),
-                        [email])
+            # Проверка email
+            cur.execute(sql.SQL("SELECT id FROM users WHERE email = %s"), [email])
             if cur.fetchone():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -151,9 +120,9 @@ def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, email, name, date_of_birth, gender, city, position, communication_goal
                 """),
-                [user.email, hashed_password, user.name, user.date_of_birth,
-                 user.gender, user.city, user.position,
-                 user.communication_goal])
+                [email, hashed_password, user.name, user.date_of_birth,
+                 user.gender, user.city, user.position, user.communication_goal]
+            )
             db.commit()
             return {"email": email}
     except Exception as e:
@@ -164,17 +133,14 @@ def register(user: UserCreate, db: Generator = Depends(get_db)) -> Dict[
         )
 
 
-@app.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(),
-          db: Generator = Depends(get_db)) -> Dict[str, str]:
+@app.post("/login", response_model=dict)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Generator = Depends(get_db)):
     email = form_data.username
     password = form_data.password
 
     try:
         with db.cursor() as cur:
-            cur.execute(
-                sql.SQL("SELECT hashed_password FROM users WHERE email = %s"),
-                [email])
+            cur.execute(sql.SQL("SELECT hashed_password FROM users WHERE email = %s"), [email])
             result = cur.fetchone()
             if result is None:
                 raise HTTPException(
@@ -191,25 +157,18 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(),
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
-            access_token = create_access_token(data={"sub": email})
-            return {"access_token": access_token, "token_type": "bearer"}
+            return {"access_token": email, "token_type": "bearer"}
     finally:
         db.close()
 
 
-@app.get("/")
-def read_root() -> Dict[str, str]:
-    return {"message": "Welcome to the user registration and login system"}
-
-
-@app.get("/user/me", response_model=UserRead)
-def read_user_me(
-        current_user: UserRead = Depends(get_current_user)) -> UserRead:
+@app.get("/user/me", response_model=User)
+def read_user_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
 @app.get("/user/me/dict")
-def read_user_me_dict(current_user: UserRead = Depends(get_current_user)) -> Dict[str, Any]:
+def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     return current_user.dict()
 
 
@@ -227,12 +186,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if client_ip not in self.attempts:
             self.attempts[client_ip] = []
 
-        self.attempts[client_ip] = [t for t in self.attempts[client_ip] if
-                                    t > current_time - self.period]
+        self.attempts[client_ip] = [t for t in self.attempts[client_ip] if t > current_time - self.period]
 
         if len(self.attempts[client_ip]) >= self.max_attempts:
-            return Response("Too many login attempts, please try again later",
-                            status_code=429)
+            return Response("Слишком много попыток входа, пожалуйста, попробуйте позже", status_code=429)
 
         response = await call_next(request)
         if request.url.path == "/login" and response.status_code == 200:
