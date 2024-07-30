@@ -1,13 +1,11 @@
-from typing import List
-
 import psycopg2
 from fastapi import HTTPException, APIRouter
 from routers.session import open_conn
 
-algorithm_router = APIRouter(prefix='/alorithm', tags=['Algorithm'])
+algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
 
-@algorithm_router.get('/get_all_users/', name='get all users')
+@algorithm_router.get('/get_all_users/', name='Get all users')
 def get_all_users() -> list[list]:
     try:
         with open_conn() as connection:
@@ -21,7 +19,7 @@ def get_all_users() -> list[list]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/get_likes/{user_id}', name='get likes')
+@algorithm_router.get('/get_likes/{user_id}', name='Get likes from user by user_id')
 def get_likes(user_id: int) -> list[int]:
     try:
         with open_conn() as connection:
@@ -30,12 +28,13 @@ def get_likes(user_id: int) -> list[int]:
                 likes = cursor.fetchall()
                 if not likes:
                     raise HTTPException(status_code=404, detail="Likes not found")
+                likes = [like[0] for like in likes]
                 return likes
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/get_dislikes/{user_id}', name='get dislikes')
+@algorithm_router.get('/get_dislikes/{user_id}', name='Get dislikes from user by user_id')
 def get_dislikes(user_id: int) -> list[int]:
     try:
         with open_conn() as connection:
@@ -44,12 +43,13 @@ def get_dislikes(user_id: int) -> list[int]:
                 dislikes = cursor.fetchall()
                 if not dislikes:
                     raise HTTPException(status_code=404, detail="Dislikes not found")
+                dislikes = [dislike[0] for dislike in dislikes]
                 return dislikes
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/find_matches/{user_id}', name='find matches')
+@algorithm_router.get('/find_matches/{user_id}', name='Find matches for user by user_id')
 def find_matches(user_id: int) -> list[int]:
     try:
         with open_conn() as connection:
@@ -66,12 +66,12 @@ def find_matches(user_id: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_like/{user_like_from}/{user_like_to}', name='create_like')
-def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | List[int]]:
+@algorithm_router.post('/create_like/{user_like_from}/{user_like_to}', name='Create like')
+def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO likes (user_id_from, user_id_to) VALUES(%s, %s)",
+                cursor.execute("INSERT INTO likes (user_id_from, user_id_to) VALUES(%s, %s) RETURNING *",
                                (user_like_from, user_like_to))
                 all_likes = cursor.fetchall()
             if not all_likes:
@@ -84,8 +84,8 @@ def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | List[
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_dislike/{user_dislike_from}/{user_dislike_to}', name='create_dislike')
-def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int]:
+@algorithm_router.post('/create_dislike/{user_dislike_from}/{user_dislike_to}', name='Create dislike')
+def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -102,8 +102,8 @@ def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.delete('/delete_likes/', name='delete likes')
-def delete_likes():
+@algorithm_router.delete('/delete_all_likes/', name='Delete all likes')
+def delete_all_likes() -> dict[str, str]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -113,8 +113,8 @@ def delete_likes():
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.delete('/delete_dislikes/', name='delete dislikes')
-def delete_dislikes():
+@algorithm_router.delete('/delete_all_dislikes/', name='Delete all dislikes')
+def delete_all_dislikes() -> dict[str, str]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:

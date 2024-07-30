@@ -8,7 +8,7 @@ from routers.session import open_conn
 event_router = APIRouter(prefix='/events', tags=['Events'])
 
 
-@event_router.get('/get_event/{event_id}', name='Get event by event id')
+@event_router.get('/get_event/{event_id}', name='Get event by event_id')
 def get_event(event_id: int) -> list:
     try:
         with open_conn() as connection:
@@ -38,7 +38,7 @@ def get_future_events() -> dict[str, int | list]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.get('/get_event_users/{event_id}', name='Get event users by event id')
+@event_router.get('/get_event_users/{event_id}', name='Get event users by event_id')
 def get_event_users(event_id: int) -> list[int]:
     try:
         with open_conn() as connection:
@@ -55,7 +55,7 @@ def get_event_users(event_id: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.get('/get_event_tags/{event_id}', name='Get event tags by event id')
+@event_router.get('/get_event_tags/{event_id}', name='Get event tags by event_id')
 def get_event_tags(event_id: int) -> dict[str, int | list[str]]:
     try:
         with open_conn() as connection:
@@ -111,7 +111,7 @@ def create_event(title: str, description: str, place: str, tags: List[str],
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.post('/add_user_to_the_event/{event_id}/{user_id}', name='Add user to the event by event id and user id')
+@event_router.post('/add_user_to_the_event/{event_id}/{user_id}', name='Add user to the event by event_id and user_id')
 def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
@@ -132,7 +132,7 @@ def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[i
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.post('/add_tag_to_the_event/{event_id}/{tag_title}', name='Add tag to the event by event id')
+@event_router.post('/add_tag_to_the_event/{event_id}/{tag_title}', name='Add tag to the event by event_id')
 def add_tag_to_the_event(event_id: int, tag_title: str) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
@@ -184,7 +184,7 @@ def add_tag(tag_title: str) -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.put('/edit_event_info/{event_id}/', name='Edit event by event id')
+@event_router.put('/edit_event_info/{event_id}/', name='Edit event by event_id')
 def edit_event_info(event_id: int, title: Optional[str] = None,
                     description: Optional[str] = None,
                     place: Optional[str] = None,
@@ -220,7 +220,7 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.delete('/delete_event/{event_id}', name='Delete event by event id')
+@event_router.delete('/delete_event/{event_id}', name='Delete event by event_id')
 def delete_event(event_id: int) -> dict[str, str]:
     try:
         with open_conn() as connection:
@@ -260,7 +260,7 @@ def delete_user_from_the_event(event_id: int, user_id: int) -> dict[str, str]:
 
 
 @event_router.delete('/delete_tag_from_the_event/{event_id}/{tag_title}',
-                     name='Delete tag from the event by event id')
+                     name='Delete tag from the event by event_id')
 def delete_tag_from_the_event(event_id: int, tag_title: str) -> dict[str, int | list]:
     try:
         with open_conn() as connection:
