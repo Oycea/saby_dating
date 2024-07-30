@@ -8,7 +8,7 @@ algorithm_router = APIRouter(prefix='/alorithm', tags=['Algorithm'])
 
 
 @algorithm_router.get('/get_all_users/', name='get all users')
-def get_all_users() -> list:
+def get_all_users() -> list[list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -22,7 +22,7 @@ def get_all_users() -> list:
 
 
 @algorithm_router.get('/get_likes/{user_id}', name='get likes')
-def get_likes(user_id: int) -> list[int]:
+def get_likes(user_id: int) ->list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -30,6 +30,7 @@ def get_likes(user_id: int) -> list[int]:
                 likes = cursor.fetchall()
                 if not likes:
                     raise HTTPException(status_code=404, detail="Likes not found")
+                likes = [like[0] for like in likes]
                 return likes
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -44,6 +45,7 @@ def get_dislikes(user_id: int) -> list[int]:
                 dislikes = cursor.fetchall()
                 if not dislikes:
                     raise HTTPException(status_code=404, detail="Dislikes not found")
+                dislikes = [dislike[0] for dislike in dislikes]
                 return dislikes
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -79,10 +81,11 @@ def find_matches(user_id: int) -> list[int]:
                 cursor.execute(
                     "SELECT user_id_to FROM likes WHERE user_id_to IN (SELECT user_id_from FROM likes WHERE user_id_to=%s)",
                     (user_id,))
-                mathes = cursor.fetchall()
-                if not mathes:
+                matches = cursor.fetchall()
+                matches = [match[0] for match in matches]
+                if not matches:
                     raise HTTPException(status_code=404, detail="Matches not found")
-                return mathes
+                return matches
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
@@ -92,13 +95,14 @@ def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | List[
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO likes (user_id_from, user_id_to) VALUES(%s, %s)",
+                cursor.execute("INSERT INTO likes (user_id_from, user_id_to) VALUES(%s, %s) RETURNING *",
                                (user_like_from, user_like_to))
-                all_likes = cursor.fetchall()
+                all_likes = cursor.fetchone()
+                print(all_likes)
             if not all_likes:
                 raise HTTPException(status_code=404, detail="user_like_from/user_like_to not found")
-            likes_to_user = [x[1] for x in all_likes]
-            return {'size': len(all_likes), f'likes to user{user_like_from}': likes_to_user}
+            #likes_to_user = [x[1] for x in all_likes]
+            return {'size': len(all_likes), f'likes to user{user_like_from}': 12}
     except psycopg2.IntegrityError as ex:
         raise HTTPException(status_code=400, detail="The user has already been liked")
     except Exception as ex:
@@ -115,9 +119,17 @@ def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int]:
                 all_dislikes = cursor.fetchall()
             if not all_dislikes:
                 raise HTTPException(status_code=404, detail="user_dislike_from/user_dislike_to not found")
-            dislikes_to_user = [x[1] for x in all_dislikes]
-            return {'size': len(all_dislikes), f'likes to user{user_dislike_from}': dislikes_to_user}
+            #dislikes_to_user = [x[1] for x in all_dislikes]
+            return {'size': len(all_dislikes), f'likes to user{user_dislike_from}': 12}
     except psycopg2.IntegrityError as ex:
         raise HTTPException(status_code=400, detail="The user has already been disliked")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
+
+
+# @algorithm_router.post('/list_questionnaires/{user_id}/}', name='list questionnaires')
+# def list_questionnaires(user_id:int, city:str, age:int, gender:str, ) -> List[int]:
+#     try:
+#         with open_conn() as connection:
+#             with connection.cursor() as cursor:
+#                 cursor.execute()
