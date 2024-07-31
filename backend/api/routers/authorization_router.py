@@ -42,6 +42,29 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return argon2.verify(plain_password, hashed_password)
 
 
+def check_password(password: str) -> None:
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long"
+        )
+    if not any(symb.isalpha() for symb in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one letter"
+        )
+    if not any(symb.isdigit() for symb in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least one digit"
+        )
+    if not any(symb in '!=+$@#%^' for symb in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The password must contain at least one special character (!=+$@#%^)"
+        )
+
+
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
@@ -122,7 +145,7 @@ def register(email: EmailStr, password: str, name: str, city: str,
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid email address: {str(ex)}"
         )
-
+    check_password(password)
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
