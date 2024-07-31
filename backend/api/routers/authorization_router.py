@@ -79,7 +79,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             )
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, password FROM users WHERE email = %s",
+                cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, "
+                               "communication_id, password FROM users WHERE email = %s",
                                (email,)
                                )
                 event = cursor.fetchone()
@@ -140,9 +141,10 @@ def register(user: UserCreate) -> Dict[str, str]:
                 hashed_password = get_password_hash(password)
                 cursor.execute(
                     """
-                    INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, communication_id)
+                    INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, 
+                    communication_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id, email, password, name, city, birthday, position, height, gender_id, target_id, communication_id
+                    RETURNING *
                     """,
                     (email, hashed_password, user.name, user.city, user.birthday,
                      user.position, user.height, user.gender_id,
