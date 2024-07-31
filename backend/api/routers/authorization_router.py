@@ -1,15 +1,21 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter
 from pydantic import BaseModel, EmailStr, Field
 from passlib.hash import argon2
-from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from email_validator import validate_email, EmailNotValidError
-from typing import Generator, Dict, Any
+from typing import Dict, Any
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from routers.session import open_conn
-from datetime import date
+from datetime import date, datetime, timedelta
+from jose import JWTError, jwt
 
 authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
+
+
+SECRET_KEY = "secret"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 class UserCreate(BaseModel):
@@ -37,9 +43,7 @@ class User(BaseModel):
     communication_id: int
 
 
-security = HTTPBasic()
-
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login/")
 app = FastAPI()
 
 
@@ -51,22 +55,35 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return argon2.verify(plain_password, hashed_password)
 
 
-def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, password FROM users WHERE email = %s",
-                               (credentials.username,)
+                               (email,)
                                )
                 event = cursor.fetchone()
                 if event is None:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Could not validate credentials",
-                        headers={"WWW-Authenticate": "Basic"},
-                    )
-                hashed_password = event[10]
-                if not verify_password(credentials.password, hashed_password):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Could not validate credentials",
@@ -85,10 +102,11 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security)):
                     communication_id=event[9]
                 )
                 return user
-    except Exception as ex:
+    except JWTError:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
 
@@ -163,7 +181,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
                         headers={"WWW-Authenticate": "Bearer"},
                     )
 
-                return {"access_token": email, "token_type": "bearer"}
+                access_token = create_access_token(data={"sub": email})
+                return {"access_token": access_token, "token_type": "bearer"}
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
