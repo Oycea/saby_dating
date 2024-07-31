@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 from passlib.hash import argon2
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from email_validator import validate_email, EmailNotValidError
@@ -9,13 +9,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from routers.session import open_conn
 from datetime import date, datetime, timedelta
 from jose import JWTError, jwt
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
-
-
-SECRET_KEY = "secret"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 class User(BaseModel):
