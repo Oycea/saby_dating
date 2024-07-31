@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter
 from pydantic import BaseModel, EmailStr, Field
 from passlib.hash import argon2
-from fastapi.security import HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from email_validator import validate_email, EmailNotValidError
 from typing import Dict, Any
 import time
@@ -16,19 +16,6 @@ authorization_router = APIRouter(prefix='/authorization', tags=['Authorization']
 SECRET_KEY = "secret"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8)
-    name: str
-    city: str
-    birthday: date
-    position: str
-    height: int
-    gender_id: int
-    target_id: int
-    communication_id: int
 
 
 class User(BaseModel):
@@ -79,8 +66,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             )
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, "
-                               "communication_id, password FROM users WHERE email = %s",
+                cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, password FROM users WHERE email = %s",
                                (email,)
                                )
                 event = cursor.fetchone()
@@ -111,11 +97,22 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         )
 
 
-@authorization_router.post('/register/', status_code=status.HTTP_200_OK)
-def register(user: UserCreate) -> Dict[str, str]:
-    email = user.email
-    password = user.password
+@authorization_router.get('/user/me', response_model=User, name='Get user by token')
+def read_user_me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
 
+
+@authorization_router.get('/user/me/dict', response_model=User,
+                          name='Get usur as dictionary by token')
+def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    return current_user.dict()
+
+
+@authorization_router.post('/register/', status_code=status.HTTP_200_OK,
+                           name='Registers a new user')
+def register(email: EmailStr, password: str, name: str, city: str,
+             birthday: date, position: str, height: int, gender_id: int,
+             target_id: int, communication_id: int) -> Dict[str, str]:
     try:
         # Проверка корректности email
         valid = validate_email(email)
@@ -141,14 +138,12 @@ def register(user: UserCreate) -> Dict[str, str]:
                 hashed_password = get_password_hash(password)
                 cursor.execute(
                     """
-                    INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, 
-                    communication_id)
+                    INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, communication_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
                     """,
-                    (email, hashed_password, user.name, user.city, user.birthday,
-                     user.position, user.height, user.gender_id,
-                     user.target_id, user.communication_id)
+                    (email, hashed_password, name, city, birthday, position,
+                     height, gender_id, target_id, communication_id)
                 )
             return {"email": email}
     except Exception as ex:
@@ -158,7 +153,7 @@ def register(user: UserCreate) -> Dict[str, str]:
         )
 
 
-@authorization_router.post('/login/', response_model=dict)
+@authorization_router.post('/login/', response_model=dict, name='Login')
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     email = form_data.username
     password = form_data.password
@@ -190,16 +185,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(ex)}"
         )
-
-
-@authorization_router.get("/user/me", response_model=User)
-def read_user_me(current_user: User = Depends(get_current_user)) -> User:
-    return current_user
-
-
-@app.get("/user/me/dict")
-def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
-    return current_user.dict()
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
