@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query
 from pydantic import BaseModel, EmailStr
 from passlib.hash import argon2
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from email_validator import validate_email, EmailNotValidError
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from routers.session import open_conn
@@ -204,12 +204,47 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         )
 
 
-@authorization_router.put('/profile/', response_model=User, name='Update profile')
-def update_profile(update_info: User,
-                   current_user: User = Depends(get_current_user)) -> User:
+@authorization_router.patch('/profile/', response_model=User, name='Update profile')
+def update_profile(
+        current_user: User = Depends(get_current_user),
+        email: Optional[EmailStr] = Query(None),
+        name: Optional[str] = Query(None),
+        city: Optional[str] = Query(None),
+        birthday: Optional[date] = Query(None),
+        position: Optional[str] = Query(None),
+        height: Optional[int] = Query(None),
+        gender_id: Optional[int] = Query(None),
+        target_id: Optional[int] = Query(None),
+        communication_id: Optional[int] = Query(None)) -> User:
     try:
         with open_conn() as connection:
-            with connection.cursor as cursor:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT email, name, city, birthday, position, height, gender_id, target_id, communication_id 
+                    FROM users WHERE id = %s
+                    """, 
+                    (current_user.id,))
+
+                current_data = cursor.fetchone()
+                if not current_data:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="User not found"
+                    )
+
+                updated_data = {
+                    "email": email or current_data[0],
+                    "name": name or current_data[1],
+                    "city": city or current_data[2],
+                    "birthday": birthday or current_data[3],
+                    "position": position or current_data[4],
+                    "height": height or current_data[5],
+                    "gender_id": gender_id or current_data[6],
+                    "target_id": target_id or current_data[7],
+                    "communication_id": communication_id or current_data[8],
+                }
+
                 cursor.execute(
                     """
                     UPDATE users
@@ -217,13 +252,22 @@ def update_profile(update_info: User,
                     WHERE id = %s
                     RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id
                     """,
-                    (update_info.email, update_info.name, update_info.city,
-                     update_info.birthday, update_info.position, update_info.height,
-                     update_info.gender_id, update_info.target_id,
-                     update_info.communication_id, current_user.id)
+                    (updated_data["email"], updated_data["name"],
+                     updated_data["city"], updated_data["birthday"],
+                     updated_data["position"], updated_data["height"],
+                     updated_data["gender_id"], updated_data["target_id"],
+                     updated_data["communication_id"], current_user.id)
                 )
+
                 new_info = cursor.fetchone()
+                if not new_info:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Failed to update user"
+                    )
+
                 return User(
+                    id=new_info[0],
                     email=new_info[1],
                     name=new_info[2],
                     city=new_info[3],
