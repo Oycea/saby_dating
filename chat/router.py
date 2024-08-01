@@ -1,5 +1,5 @@
+import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-
 from session import get_database_connection
 
 router = APIRouter(
@@ -19,19 +19,13 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    # async def send_personal_message(self, message: str, websocket: WebSocket):
-    #     await websocket.send_text(message)
-
-    async def broadcast(self, message: str):
+    async def broadcast(self, user_id: int, message: str):
+        message_data = {
+            "userId": user_id,
+            "message": message
+        }
         for connection in self.active_connections:
-            await connection.send_text(message)
-            try:
-                with get_database_connection() as conn:
-                    with conn.cursor() as cursor:
-                        cursor.execute('INSERT INTO messages(text) VALUES(%s)', (message,))
-                        print(message)
-            except Exception as ex:
-                raise HTTPException(status_code=500, detail=str(ex))
+            await connection.send_text(json.dumps(message_data))
 
 
 manager = ConnectionManager()
@@ -43,8 +37,19 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # await manager.send_personal_message(f"You wrote: {data}", websocket)
-            await manager.broadcast(f"{data}")
+            data_json = json.loads(data)
+            message = data_json.get("message")
+            user_id = data_json.get("userId")
+
+            try:
+                with get_database_connection() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute("INSERT INTO messages(user_id, message) VALUES(%s, %s)", (user_id, message))
+            except Exception as ex:
+                raise HTTPException(status_code=500, detail=str(ex))
+
+            await manager.broadcast(user_id, message)
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
@@ -54,10 +59,9 @@ async def load_messages(offset: int = 30, limit: int = 30):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT "text" FROM messages ORDER BY id DESC LIMIT %s OFFSET %s', (limit, offset))
-                text = cursor.fetchall()
-                text_list = [row[0] for row in text]
-                return text_list
+                cursor.execute("SELECT user_id, message FROM messages ORDER BY id DESC LIMIT %s OFFSET %s", (limit, offset))
+                text = cursor.fetchall()  # Возвращает кортеж user_id и message
+                return text
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
