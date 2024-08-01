@@ -1,6 +1,8 @@
 import psycopg2
 from fastapi import HTTPException, APIRouter
 from routers.session import open_conn
+from psycopg2.extras import RealDictCursor
+
 
 algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
@@ -9,7 +11,7 @@ algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 def get_all_users() -> list[list]:
     try:
         with open_conn() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SELECT * FROM users")
                 users = cursor.fetchall()
                 if not users:
@@ -78,7 +80,7 @@ def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | list[
             if not new_likes:
                 raise HTTPException(status_code=404, detail="user_like_from/user_like_to not found")
             return {'new line': new_likes}
-    except psycopg2.IntegrityError as ex:
+    except psycopg2.IntegrityError:
         raise HTTPException(status_code=400, detail="The user has already been liked")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -95,7 +97,7 @@ def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int |
             if not new_dislikes:
                 raise HTTPException(status_code=404, detail="user_dislike_from/user_dislike_to not found")
             return {'new line': new_dislikes}
-    except psycopg2.IntegrityError as ex:
+    except psycopg2.IntegrityError:
         raise HTTPException(status_code=400, detail="The user has already been disliked")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -131,23 +133,34 @@ def list_questionnaires(user_id_var: int, city_var: int, gender_var: int, age_mi
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 frst_request = ("WITH creating_grand_selection as("
-                                "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE height BETWEEN %s AND %s)"
+                                "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part("
+                                "'year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE height BETWEEN %s AND %s)"
                                 "UNION"
-                                "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE communication_id = %s)"
+                                "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part("
+                                "'year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE communication_id = %s)"
                                 "UNION"
-                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, gender_id, target_id, communacation_id"
-                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) AS join_inters"
-                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
+                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
+                                "gender_id, target_id, communacation_id"
+                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
+                                "AS join_inters"
+                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
+                                "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
                                 "WHERE title =%s)"
                                 "UNION"
-                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, gender_id, target_id, communacation_id"
-                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) AS join_inters"
-                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
+                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
+                                "gender_id, target_id, communacation_id"
+                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
+                                "AS join_inters"
+                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
+                                "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
                                 "WHERE title =%s)"
                                 "UNION"
-                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, gender_id, target_id, communacation_id"
-                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) AS join_inters"
-                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
+                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
+                                "gender_id, target_id, communacation_id"
+                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
+                                "AS join_inters"
+                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
+                                "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
                                 "WHERE title =%s)"
                                 ")"
                                 "SELECT id"
@@ -164,7 +177,7 @@ def list_questionnaires(user_id_var: int, city_var: int, gender_var: int, age_mi
                     city_var, gender_var, age_min, age_max, interes_1, city_var, gender_var, age_min, age_max,
                     interes_2,
                     city_var, gender_var, age_min, age_max, interes_3, user_id_var, user_id_var)
-                cursor.execute(find_matches, sel_vars)
+                cursor.execute(frst_request, sel_vars)
                 all_questionnaires = cursor.fetchall()
                 if not all_questionnaires:
                     raise HTTPException(status_code=404, detail="Matches not found")
