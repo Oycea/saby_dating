@@ -131,52 +131,6 @@ def list_questionnaires(user_id_var: int, city_var: int, gender_var: int, age_mi
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                # frst_request = ("WITH creating_grand_selection as("
-                #                 "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part("
-                #                 "'year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE height BETWEEN %s AND %s)"
-                #                 "UNION"
-                #                 "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part("
-                #                 "'year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE communication_id = %s)"
-                #                 "UNION"
-                #                 "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
-                #                 "gender_id, target_id, communacation_id"
-                #                 "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
-                #                 "AS join_inters"
-                #                 "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
-                #                 "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
-                #                 "WHERE title =%s)"
-                #                 "UNION"
-                #                 "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
-                #                 "gender_id, target_id, communacation_id"
-                #                 "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
-                #                 "AS join_inters"
-                #                 "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
-                #                 "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
-                #                 "WHERE title =%s)"
-                #                 "UNION"
-                #                 "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
-                #                 "gender_id, target_id, communacation_id"
-                #                 "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
-                #                 "AS join_inters"
-                #                 "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
-                #                 "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
-                #                 "WHERE title =%s)"
-                #                 ")"
-                #                 "SELECT id"
-                #                 "FROM creating_grand_selection"
-                #                 "GROUP BY id"
-                #                 "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_like_from = %s)"
-                #                 "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s)"
-                #                 "ORDER BY count(*) DESC"
-                #                 )
-                # sel_vars = (
-                #     city_var, gender_var, age_min, age_max, height_min, height_max, city_var, gender_var, age_min,
-                #     age_max,
-                #     communication_id_var,
-                #     city_var, gender_var, age_min, age_max, interes_1, city_var, gender_var, age_min, age_max,
-                #     interes_2,
-                #     city_var, gender_var, age_min, age_max, interes_3, user_id_var, user_id_var)
-                # cursor.execute(frst_request, sel_vars)
                 frst_request = ("CREATE TABLE #tmp_interests "
                                 "SELECT ui.user_id as id FROM "
                                 "("
