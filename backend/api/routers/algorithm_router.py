@@ -122,6 +122,7 @@ def delete_all_dislikes() -> dict[str, str]:
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
+
 @algorithm_router.post('/list_questionnaires/{user_id}', name='list of assessment questionnaires')
 def list_questionnaires(user_id_var:int, city_var:int, gender_var:int, age_min:int, age_max:int, height_min:int, height_max:int,
                         interes_1:str, interes_2:str, interes_3:str, communication_id_var:int)->list[list]:
