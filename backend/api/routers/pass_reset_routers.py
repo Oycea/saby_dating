@@ -9,7 +9,7 @@ from routers.session import open_conn
 from utils import create_reset_password_token, verify_reset_password_token, is_registrated, change_password
 
 router = APIRouter(tags=['Password reset'])
-templates = Jinja2Templates(directory="frontend")
+templates = Jinja2Templates(directory="/frontend/")
 
 # Параметры для отправки письма
 subject = 'password reset'
