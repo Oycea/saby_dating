@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import Optional, List
 import psycopg2
 
-from fastapi import HTTPException, APIRouter
+from fastapi import HTTPException, APIRouter, Depends
+
 from routers.session import open_conn
+from routers.authorization_router import get_current_user
 
 event_router = APIRouter(prefix='/events', tags=['Events'])
 
@@ -99,6 +101,8 @@ def get_event_images(event_id: int) -> dict[str, int | list[str]]:
 def create_event(title: str, description: str, place: str, tags: List[str],
                  date: datetime, creator_id: int, images_url: Optional[List[str]] = None,
                  users_limit: Optional[int] = None, is_online: bool = False) -> dict[str, str | list]:
+    # user_data = get_current_user(token)
+    # creator_id = user_data.id
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -133,7 +137,7 @@ def create_event(title: str, description: str, place: str, tags: List[str],
 
 
 @event_router.post('/add_user_to_the_event/{event_id}/{user_id}', name='Add user to the event by event_id and user_id')
-def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[int]]:
+def add_user_to_the_event(event_id: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -147,7 +151,7 @@ def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[i
 
                 users_id = [user[0] for user in events_users]
                 return {'size': len(users_id), 'events_users': users_id}
-    except psycopg2.IntegrityError as ex:
+    except psycopg2.IntegrityError:
         raise HTTPException(status_code=400, detail="User already added to the event or invalid event/user ID")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -158,6 +162,14 @@ def add_tag_to_the_event(event_id: int, tag_title: str) -> dict[str, int | list[
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                cursor.execute("SELECT creator_id FROM events WHERE id=%s", (event_id,))
+                if creator_id != user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Could not validate credentials",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+
                 # Получение id тега по его названию
                 cursor.execute("SELECT id FROM tags WHERE title=%s", (tag_title,))
                 tag_id_row = cursor.fetchone()
@@ -209,7 +221,7 @@ def add_image_to_the_event(event_id: int, images_url: list[str]) -> dict[str, in
 
                 event_images = [image[0] for image in event_images]
                 return {'size': len(event_images), 'event_images': event_images}
-    except psycopg2.IntegrityError as ex:
+    except psycopg2.IntegrityError:
         raise HTTPException(status_code=400, detail="Image already added to the event or invalid image/event ID")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
