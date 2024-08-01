@@ -1,15 +1,21 @@
 import smtplib
 from email.mime.text import MIMEText
-from fastapi import APIRouter, Request, Form, HTTPException, status
+from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+import os
+
 
 from config import SMTP_SERVER, SMTP_PORT, SMTP_PASSWORD, SMTP_USER
-from routers.session import open_conn
 from utils import create_reset_password_token, verify_reset_password_token, is_registrated, change_password
 
 router = APIRouter(tags=['Password reset'])
-templates = Jinja2Templates(directory="frontend")
+
+current_file_path = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_file_path, '..', '..', '..'))
+template_dir = os.path.join(project_root, 'frontend')
+
+templates = Jinja2Templates(directory=template_dir)
 
 # Параметры для отправки письма
 subject = 'password reset'
@@ -21,8 +27,16 @@ async def reset_password_form_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+@router.get("/reset-password/{token}", response_class=HTMLResponse)
+async def reset_password_form(request: Request, token: str):
+    email = verify_reset_password_token(token)
+    if email is None:
+        raise HTTPException(status_code=400, detail="Invalid token")
+    return templates.TemplateResponse("reset_password.html", {"request": request, "token": token})
+
+
 @router.post("/reset-password/")
-async def reset_password(email: str = Form(...)):
+async def reset_password(request: Request, email: str = Form(...)):
     if is_registrated(email):
         token = create_reset_password_token(email)
         reset_password_url = f"http://localhost:8000/reset-password/{token}"
@@ -42,24 +56,17 @@ async def reset_password(email: str = Form(...)):
             raise HTTPException(status_code=400)
         except Exception:
             raise HTTPException(status_code=400)
-        return {"message": "Instructions to reset your password have been sent to your email."}
+        return templates.TemplateResponse("reset_sent.html", {"request": request})
     raise HTTPException(status_code=404, detail="U r not in base")
 
 
-@router.get("/reset-password/{token}", response_class=HTMLResponse)
-async def reset_password_form(request: Request, token: str):
-    email = verify_reset_password_token(token)
-    if email is None:
-        raise HTTPException(status_code=400, detail="Invalid token")
-    return templates.TemplateResponse("reset_password.html", {"request": request, "token": token})
-
-
 @router.post("/reset-password/{token}")
-async def process_reset_password(token: str, password: str = Form(...), confirm_password: str = Form(...)):
+async def process_reset_password(request: Request, token: str, password: str = Form(...),
+                                 confirm_password: str = Form(...)):
     if password != confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
     email = verify_reset_password_token(token)
     change_password(email, password)
     if email is None:
         raise HTTPException(status_code=400, detail="Invalid token")
-    return {"message": "Password has been reset successfully."}
+    return templates.TemplateResponse("password_resseted.html", {"request": request})
