@@ -286,6 +286,26 @@ def update_profile(
         )
 
 
+@authorization_router.delete('/profile/', status_code=status.HTTP_204_NO_CONTENT,
+                             name='Delete profile')
+def delete_profile(current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM users WHERE id = %s", (current_user.id,))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="User not found"
+                    )
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(ex)}"
+        )
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_attempts: int, period: int) -> None:
         super().__init__(app)

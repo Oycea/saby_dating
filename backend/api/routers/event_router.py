@@ -12,14 +12,16 @@ event_router = APIRouter(prefix='/events', tags=['Events'])
 
 
 @event_router.get('/get_event/{event_id}', name='Get event by event_id')
-def get_event(event_id: int) -> list:
+def get_event(event_id: int) -> dict[str, Any]:
     try:
         with open_conn() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
                 event = cursor.fetchone()
+
                 if not event:
                     raise HTTPException(status_code=404, detail="Event not found")
+
                 return event
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
@@ -101,12 +103,12 @@ def get_event_images(event_id: int) -> dict[str, int | list[str]]:
 @event_router.post('/create_event/', name='Create new event')
 def create_event(title: str, description: str, place: str, tags: List[str],
                  date: datetime, creator_id: int, images_url: Optional[List[str]] = None,
-                 users_limit: Optional[int] = None, is_online: bool = False) -> dict[str, str | list]:
+                 users_limit: Optional[int] = None, is_online: bool = False) -> dict[str, str | dict]:
     # user_data = get_current_user(token)
     # creator_id = user_data.id
     try:
         with open_conn() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
                     "WITH new_event AS("
                     "INSERT INTO events (title, description, place, created_at, datetime, creator_id, users_limit, "
@@ -122,23 +124,24 @@ def create_event(title: str, description: str, place: str, tags: List[str],
                 for tag in tags:
                     cursor.execute("SELECT id FROM tags WHERE title=%s", (tag,))
                     tag_id = cursor.fetchone()
-                    tags_data.append((event[0], tag_id[0]))
+                    tags_data.append((event['id'], tag_id['id']))
                 cursor.executemany(tags_query + "(%s, %s);", tags_data)
 
-                cursor.execute("INSERT INTO events_users (event_id, user_id) VALUES (%s, %s)", (event[0], creator_id))
+                cursor.execute("INSERT INTO events_users (event_id, user_id) VALUES (%s, %s)",
+                               (event['id'], creator_id))
 
                 if images_url:
                     images_query = "INSERT INTO events_images (event_id, url) VALUES "
-                    images_data = [(event[0], url) for url in images_url]
+                    images_data = [(event['id'], url) for url in images_url]
                     cursor.executemany(images_query + "(%s, %s);", images_data)
 
-                return {'message': f'Event with id {event[0]} created successfully', 'event info': event}
+                return {'message': f'Event with id {event["id"]} created successfully', 'event info': event}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
 @event_router.post('/add_user_to_the_event/{event_id}/{user_id}', name='Add user to the event by event_id and user_id')
-def add_user_to_the_event(event_id: int) -> dict[str, int | list[int]]:
+def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -249,10 +252,10 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
                     description: Optional[str] = None,
                     place: Optional[str] = None,
                     date: Optional[datetime] = None, creator_id: Optional[int] = None,
-                    users_limit: Optional[int] = None, is_online: Optional[bool] = None) -> list:
+                    users_limit: Optional[int] = None, is_online: Optional[bool] = None) -> dict[str, Any]:
     try:
         with open_conn() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
                 event = cursor.fetchone()
 
@@ -260,13 +263,13 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
                     raise HTTPException(status_code=404, detail="Event not found")
 
                 update_fields = {
-                    'title': title or event[1],
-                    'description': description or event[2],
-                    'place': place or event[3],
-                    'datetime': date or event[5],
-                    'creator_id': creator_id or event[6],
-                    'users_limit': users_limit or event[7],
-                    'is_online': is_online if is_online is not None else event[8]
+                    'title': title or event['title'],
+                    'description': description or event['description'],
+                    'place': place or event['place'],
+                    'datetime': date or event['datetime'],
+                    'creator_id': creator_id or event['creator_id'],
+                    'users_limit': users_limit or event['users_limit'],
+                    'is_online': is_online if is_online is not None else event['is_online']
                 }
 
                 cursor.execute(
@@ -281,10 +284,10 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
 
 
 @event_router.delete('/delete_event/{event_id}', name='Delete event by event_id')
-def delete_event(event_id: int) -> dict[str, str]:
+def delete_event(event_id: int) -> dict[str, str | dict]:
     try:
         with open_conn() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("DELETE FROM events WHERE id=%s RETURNING *", (event_id,))
                 event = cursor.fetchone()
 
