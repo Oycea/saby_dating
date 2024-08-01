@@ -23,7 +23,7 @@ async def reset_password_form_page(request: Request):
 
 @router.post("/reset-password/")
 async def reset_password(email: str = Form(...)):
-    if (is_registrated(email)):
+    if is_registrated(email):
         token = create_reset_password_token(email)
         reset_password_url = f"http://127.0.0.1:8000/reset-password/{token}"
         print(reset_password_url)
@@ -38,9 +38,9 @@ async def reset_password(email: str = Form(...)):
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
-        except smtplib.SMTPAuthenticationError as e:
+        except smtplib.SMTPAuthenticationError:
             raise HTTPException(status_code=400)
-        except Exception as e:
+        except Exception:
             raise HTTPException(status_code=400)
         return {"message": "Instructions to reset your password have been sent to your email."}
     raise HTTPException(status_code=404, detail="U r not in base")
