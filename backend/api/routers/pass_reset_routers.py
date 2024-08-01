@@ -25,7 +25,7 @@ async def reset_password_form_page(request: Request):
 async def reset_password(email: str = Form(...)):
     if (is_registrated(email)):
         token = create_reset_password_token(email)
-        reset_password_url = f"http://127.0.0.1:8000/reset-password/{token}"
+        reset_password_url = f"http://localhost:8000/reset-password/{token}"
         print(reset_password_url)
         body = f"Ссылка для сброса пароля: {reset_password_url}"
         msg = MIMEText(body)
