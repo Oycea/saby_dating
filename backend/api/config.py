@@ -32,4 +32,3 @@ try:
     ACCESS_TOKEN_EXPIRE_MINUTES = int(ACCESS_TOKEN_EXPIRE_MINUTES)
 except ValueError:
     raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be an integer")
-

@@ -1,24 +1,19 @@
 import smtplib
 from email.mime.text import MIMEText
-from fastapi import APIRouter, Request, Form, HTTPException,status
+from fastapi import APIRouter, Request, Form, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from backend.config import smtp_server, smtp_port, smtp_password, smtp_user
-from backend.session import open_conn
-from backend.utils import create_reset_password_token, verify_reset_password_token, is_registrated, change_password
+from config import smtp_server, smtp_port, smtp_password, smtp_user
+from routers.session import open_conn
+from utils import create_reset_password_token, verify_reset_password_token, is_registrated, change_password
 
 router = APIRouter(tags=['Password reset'])
 templates = Jinja2Templates(directory="frontend")
 
-
-
-
-
 # Параметры для отправки письма
 subject = 'password reset'
 from_email = 'datesaby@gmail.com'
-
 
 
 @router.get("/reset-password-form/", response_class=HTMLResponse)
@@ -28,8 +23,7 @@ async def reset_password_form_page(request: Request):
 
 @router.post("/reset-password/")
 async def reset_password(email: str = Form(...)):
-
-    if(is_registrated(email)):
+    if (is_registrated(email)):
         token = create_reset_password_token(email)
         reset_password_url = f"http://127.0.0.1:8000/reset-password/{token}"
         print(reset_password_url)
@@ -59,6 +53,7 @@ async def reset_password_form(request: Request, token: str):
         raise HTTPException(status_code=400, detail="Invalid token")
     return templates.TemplateResponse("reset_password.html", {"request": request, "token": token})
 
+
 @router.post("/reset-password/{token}")
 async def process_reset_password(token: str, password: str = Form(...), confirm_password: str = Form(...)):
     if password != confirm_password:
@@ -68,7 +63,3 @@ async def process_reset_password(token: str, password: str = Form(...), confirm_
     if email is None:
         raise HTTPException(status_code=400, detail="Invalid token")
     return {"message": "Password has been reset successfully."}
-
-
-
-

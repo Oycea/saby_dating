@@ -1,10 +1,10 @@
 from jose import JWTError, jwt
-from backend.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import datetime, timedelta
 from passlib.hash import argon2
-
-from backend.session import open_conn
 from fastapi import HTTPException, status
+
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from routers.session import open_conn
 
 
 def create_reset_password_token(email: str):
@@ -37,8 +37,6 @@ def is_registrated(email: str):
             return True
 
 
-
-
 def get_password_hash(password: str) -> str:
     return argon2.hash(password)
 
@@ -69,7 +67,8 @@ def check_password(password: str) -> None:
             detail="The password must contain at least one special character (!=+$@#%^)"
         )
 
-def change_password(email: str,password: str):
+
+def change_password(email: str, password: str):
     with open_conn() as connection:
         with connection.cursor() as cursor:
             check_password(password)
