@@ -162,7 +162,8 @@ def register(email: EmailStr, password: str, name: str, city: str,
                     (email, hashed_password, name, city, birthday, position,
                      height, gender_id, target_id, communication_id)
                 )
-            return {"email": email}
+                access_token = create_access_token(data={"sub": email})
+                return {"access_token": access_token, "token_type": "bearer"}
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -223,7 +224,7 @@ def update_profile(
                     """
                     SELECT email, name, city, birthday, position, height, gender_id, target_id, communication_id 
                     FROM users WHERE id = %s
-                    """, 
+                    """,
                     (current_user.id,))
 
                 current_data = cursor.fetchone()
