@@ -1,85 +1,110 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<head>
-    <title>Чат</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <style>
-        #chat-messages {
-            display: flex;
-            flex-direction: column-reverse; /* Изменяем порядок отображения сообщений */
-            align-items: center;
-            font-size: 50px;
+    <head>
+        <title>Чат</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <style>
+            #chat-messages {
+                display: flex;
+                flex-direction: column-reverse; /* Изменяем порядок отображения сообщений */
+                align-items: center;
+                font-size: 50px;
+            }
+        </style>
+    </head>
+    <body>
+    <div id="chat-messages">
+        <h1>Уютненький чатик</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button type="submit">Отправить</button>
+        </form>
+        <ul id='messages' style="list-style: none">
+            {% for message in limited_text_list|reverse %}
+                {% if message[0] == user.id %} <!--Первое значение - id пользователя, которому принадлежит сообщение, второе - само сообщение -->
+                    <li>{{ message[1] }}</li>
+                {% else %}
+                    <li>чужое сообщение</li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+        {{ user }}
+    </div>
+    <script>
+        let ws = new WebSocket(`ws://localhost:8000/chat/ws`);
+
+        ws.onmessage = function (event) {
+            var messages = document.getElementById('messages');
+            var data = JSON.parse(event.data);
+            var message = document.createElement('li');
+
+            if (data.userId === {{ user.id }}) {
+                message.textContent = data.message;
+            } else {
+                message.textContent = "чужое сообщение";
+            }
+
+            messages.appendChild(message);
+            offset += 1;
+        };
+
+
+        function sendMessage(event) {
+            event.preventDefault();
+            let input = document.getElementById("messageText");
+
+            const messageData = {
+                userId: {{ user.id }},
+                message: input.value
+            };
+
+            ws.send(JSON.stringify(messageData));
+            input.value = '';
         }
-    </style>
-</head>
-<body>
-<div id="chat-messages">
-    <h1>Уютненький чатик</h1>
-    <form action="" onsubmit="sendMessage(event)">
-        <input type="text" id="messageText" autocomplete="off"/>
-        <button type="submit">Отправить</button>
-    </form>
-    <ul id='messages' style="list-style: none">
-        {% for message in limited_text_list|reverse %}
-            <li>{{ message }}</li>
-        {% endfor %}
-    </ul>
-</div>
-<script>
-    let ws = new WebSocket(`ws://localhost:8002/chat/ws`);
-    ws.onmessage = function(event) {
-        var messages = document.getElementById('messages')
-        var message = document.createElement('li')
-        var content = document.createTextNode(event.data)
-        message.appendChild(content)
-        messages.appendChild(message)
-        offset += 1;
-    };
-    function sendMessage(event) {
-        event.preventDefault()
-        let input = document.getElementById("messageText")
-        ws.send(input.value)
-        input.value = ''
-    }
 
-    let offset = 30; // Начальный индекс для загрузки сообщений
-    const limit = 30; // Кол-во сообщений для загрузки
-    let loadingMessages = false;
+        let offset = 30; // Начальный индекс для загрузки сообщений
+        const limit = 30; // Кол-во сообщений для загрузки
+        let loadingMessages = false;
 
-    function loadMessages() {
-        if (loadingMessages) return; // Если уже идет загрузка сообщений, не запускаем новую
-        loadingMessages = true; // Устанавливаем флаг загрузки
-        $.ajax({
-            type: "GET",
-            url: "{{ url_for('load_messages')}}",
-            data: { offset: offset, limit: limit },
-            success: function(data) {
-                if (data.length > 0) {
-                    data.forEach(message => {
-                        $("#messages").prepend(`<li>${message}</li>`); // Добавляем сообщения в начало
-                    });
-                    offset += limit; // Увеличиваем смещение
+        function loadMessages() {
+            if (loadingMessages) return;
+            loadingMessages = true;
+            $.ajax({
+                type: "GET",
+                url: "{{ url_for('load_messages')}}",
+                data: {offset: offset, limit: limit},
+                success: function (data) {
+                    if (data.length > 0) {
+                        data.forEach(message => {
+                            var listItem = document.createElement('li');
+                            if (message[0] === {{ user.id }}) {
+                                listItem.textContent = message[1];
+                            } else {
+                                listItem.textContent = "чужое сообщение";
+                            }
+                            $("#messages").prepend(listItem);
+                        });
+                        offset += limit;
+                    }
+                },
+                complete: function () {
+                    loadingMessages = false;
                 }
-            },
-            complete: function() {
-                loadingMessages = false; // Сбрасываем флаг после завершения загрузки
+            });
+        }
+
+        window.addEventListener('scroll', function () {
+            if (window.scrollY <= 150 && "{{ full_text_list|length }}" > offset) {
+                loadMessages();
             }
         });
-    }
 
-    window.addEventListener('scroll', function() {
-        if (window.scrollY <= 150 && "{{ full_text_list|length }}" > offset) {
-            loadMessages(); // Загружаем сообщения, когда пользователь прокручивает в верхнюю часть
-        }
-    });
-
-    window.onload = function() {
-        setTimeout(() => { // Используем setTimeout для задержки прокрутки
-            window.scrollTo(0, document.body.scrollHeight);
-        }, 1); // Задержка в 1 мс
-    };
-
-</script>
-</body>
+        window.onload = function () {
+            setTimeout(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            }, 1);
+        };
+    </script>
+    </body>
 {% endblock %}
