@@ -39,18 +39,18 @@ def get_future_events() -> dict[str, int | list]:
 
 
 @event_router.get('/get_event_users/{event_id}', name='Get event users by event_id')
-def get_event_users(event_id: int) -> list[int]:
+def get_event_users(event_id: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT user_id FROM events_users WHERE event_id=%s", (event_id,))
-                users = cursor.fetchall()
+                users_data = cursor.fetchall()
 
-                if not users:
+                if not users_data:
                     raise HTTPException(status_code=404, detail="Users or event not found")
 
-                users_id = [user[0] for user in users]
-                return users_id
+                users_id = [user[0] for user in users_data]
+                return {'size': len(users_id), 'users ids': users_id}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
@@ -67,6 +67,9 @@ def get_event_tags(event_id: int) -> dict[str, int | list[str]]:
                     (event_id,))
                 tags_data = cursor.fetchall()
 
+                if not tags_data:
+                    raise HTTPException(status_code=404, detail="Tags or event not found")
+
                 tags = [tags[0] for tags in tags_data]
 
                 return {'size': len(tags), 'tags': tags}
@@ -74,21 +77,39 @@ def get_event_tags(event_id: int) -> dict[str, int | list[str]]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
+@event_router.get('/get_event_images/{event_id}', name='Get event images by event_id')
+def get_event_images(event_id: int) -> dict[str, int | list[str]]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT url FROM events_images WHERE event_id=%s", (event_id,))
+                images_data = cursor.fetchall()
+
+                if not images_data:
+                    raise HTTPException(status_code=404, detail="Tags or event not found")
+
+                images_urls = [images[0] for images in images_data]
+
+                return {'size': len(images_urls), 'images urls': images_urls}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
 @event_router.post('/create_event/', name='Create new event')
 def create_event(title: str, description: str, place: str, tags: List[str],
                  date: datetime, creator_id: int, images_url: Optional[List[str]] = None,
-                 users_limit: Optional[int] = None, is_distant: bool = False) -> dict[str, str | list]:
+                 users_limit: Optional[int] = None, is_online: bool = False) -> dict[str, str | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     "WITH new_event AS("
                     "INSERT INTO events (title, description, place, created_at, datetime, creator_id, users_limit, "
-                    "online) "
+                    "is_online) "
                     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
                     "RETURNING *)"
                     "SELECT * FROM new_event",
-                    (title, description, place, datetime.now(), date, creator_id, users_limit, is_distant))
+                    (title, description, place, datetime.now(), date, creator_id, users_limit, is_online))
                 event = cursor.fetchone()
 
                 tags_query = "INSERT INTO events_tags (event_id, tag_id) VALUES "
@@ -97,14 +118,14 @@ def create_event(title: str, description: str, place: str, tags: List[str],
                     cursor.execute("SELECT id FROM tags WHERE title=%s", (tag,))
                     tag_id = cursor.fetchone()
                     tags_data.append((event[0], tag_id[0]))
-                cursor.executemany(tags_query + "(%s, %s);", (tags_data,))
+                cursor.executemany(tags_query + "(%s, %s);", tags_data)
 
                 cursor.execute("INSERT INTO events_users (event_id, user_id) VALUES (%s, %s)", (event[0], creator_id))
 
                 if images_url:
                     images_query = "INSERT INTO events_images (event_id, url) VALUES "
                     images_data = [(event[0], url) for url in images_url]
-                    cursor.executemany(images_query + "(%s, %s);", (images_data,))
+                    cursor.executemany(images_query + "(%s, %s);", images_data)
 
                 return {'message': f'Event with id {event[0]} created successfully', 'event info': event}
     except Exception as ex:
@@ -133,7 +154,7 @@ def add_user_to_the_event(event_id: int, user_id: int) -> dict[str, int | list[i
 
 
 @event_router.post('/add_tag_to_the_event/{event_id}/{tag_title}', name='Add tag to the event by event_id')
-def add_tag_to_the_event(event_id: int, tag_title: str) -> dict[str, int | list[int]]:
+def add_tag_to_the_event(event_id: int, tag_title: str) -> dict[str, int | list[str]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -168,6 +189,32 @@ def add_tag_to_the_event(event_id: int, tag_title: str) -> dict[str, int | list[
         raise HTTPException(status_code=500, detail=str(ex))
 
 
+@event_router.post('/add_image_to_the_event/{event_id}/', name='Add images to the event by event_id')
+def add_image_to_the_event(event_id: int, images_url: list[str]) -> dict[str, int | list[str]]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                if images_url:
+                    images_query = "INSERT INTO events_images (event_id, url) VALUES "
+                    images_data = [(event_id, url) for url in images_url]
+                    cursor.executemany(images_query + "(%s, %s);", images_data)
+                else:
+                    raise HTTPException(status_code=400, detail="Nothing to add")
+
+                cursor.execute("SELECT url FROM events_images WHERE event_id=%s", (event_id,))
+                event_images = cursor.fetchall()
+
+                if not event_images:
+                    raise HTTPException(status_code=404, detail="No images found for the event")
+
+                event_images = [image[0] for image in event_images]
+                return {'size': len(event_images), 'event_images': event_images}
+    except psycopg2.IntegrityError as ex:
+        raise HTTPException(status_code=400, detail="Image already added to the event or invalid image/event ID")
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
 @event_router.post('/add_tag/', name='Add tag')
 def add_tag(tag_title: str) -> dict[str, str]:
     try:
@@ -189,7 +236,7 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
                     description: Optional[str] = None,
                     place: Optional[str] = None,
                     date: Optional[datetime] = None, creator_id: Optional[int] = None,
-                    users_limit: Optional[int] = None, is_distant: Optional[bool] = None) -> list:
+                    users_limit: Optional[int] = None, is_online: Optional[bool] = None) -> list:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -206,12 +253,12 @@ def edit_event_info(event_id: int, title: Optional[str] = None,
                     'datetime': date or event[5],
                     'creator_id': creator_id or event[6],
                     'users_limit': users_limit or event[7],
-                    'online': is_distant if is_distant is not None else event[8]
+                    'is_online': is_online if is_online is not None else event[8]
                 }
 
                 cursor.execute(
                     "UPDATE events SET title=%s, description=%s, place=%s, datetime=%s, creator_id=%s, "
-                    "users_limit=%s, online=%s WHERE id=%s RETURNING *",
+                    "users_limit=%s, is_online=%s WHERE id=%s RETURNING *",
                     (*update_fields.values(), event_id))
                 updated_event = cursor.fetchone()
 
