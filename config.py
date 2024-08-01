@@ -8,9 +8,10 @@ POSTGRES_USER = os.getenv('POSTGRES_USER')
 POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 POSTGRES_DATABASE = os.getenv('POSTGRES_DATABASE')
 POSTGRES_HOST = os.getenv('POSTGRES_HOST')
+POSTGRES_PORT = os.getenv('POSTGRES_PORT')
 
 # Проверка наличия всех необходимых переменных
-required_vars = ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_HOST', 'POSTGRES_DATABASE']
+required_vars = ['POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_HOST', 'POSTGRES_DATABASE', 'POSTGRES_PORT']
 missing_vars = [var for var in required_vars if os.getenv(var) is None]
 
 if missing_vars:
