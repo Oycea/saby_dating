@@ -206,6 +206,43 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         )
 
 
+@authorization_router.put('/profile/', response_model=User, name='Update profile')
+def update_profile(update_info: User,
+                   current_user: User = Depends(get_current_user)) -> User:
+    try:
+        with open_conn() as connection:
+            with connection.cursor as cursor:
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET email = %s, name = %s, city = %s, birthday = %s, position = %s, height = %s, gender_id = %s, target_id = %s, communication_id = %s
+                    WHERE id = %s
+                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id
+                    """,
+                    (update_info.email, update_info.name, update_info.city,
+                     update_info.birthday, update_info.position, update_info.height,
+                     update_info.gender_id, update_info.target_id,
+                     update_info.communication_id, current_user.id)
+                )
+                new_info = cursor.fetchone()
+                return User(
+                    email=new_info[1],
+                    name=new_info[2],
+                    city=new_info[3],
+                    birthday=new_info[4],
+                    position=new_info[5],
+                    height=new_info[6],
+                    gender_id=new_info[7],
+                    target_id=new_info[8],
+                    communication_id=new_info[9]
+                )
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(ex)}"
+        )
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_attempts: int, period: int) -> None:
         super().__init__(app)
