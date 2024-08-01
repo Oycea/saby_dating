@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 import psycopg2
 
+from psycopg2.extras import RealDictCursor
 from fastapi import HTTPException, APIRouter, Depends
 
 from routers.session import open_conn
@@ -25,10 +26,10 @@ def get_event(event_id: int) -> list:
 
 
 @event_router.get('/get_future_events', name='Get events that are not expired')
-def get_future_events() -> dict[str, int | list]:
+def get_future_events() -> dict[str, int | list[dict[str, Any]]]:
     try:
         with open_conn() as connection:
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SELECT * FROM events WHERE datetime>%s", (datetime.now(),))
                 events = cursor.fetchall()
 

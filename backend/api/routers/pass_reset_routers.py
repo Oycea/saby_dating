@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, Form, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from config import smtp_server, smtp_port, smtp_password, smtp_user
+from config import SMTP_SERVER, SMTP_PORT, SMTP_PASSWORD, SMTP_USER
 from routers.session import open_conn
 from utils import create_reset_password_token, verify_reset_password_token, is_registrated, change_password
 
@@ -34,9 +34,9 @@ async def reset_password(email: str = Form(...)):
         msg['To'] = email
 
         try:
-            with smtplib.SMTP(smtp_server, smtp_port) as server:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
-                server.login(smtp_user, smtp_password)
+                server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
         except smtplib.SMTPAuthenticationError as e:
             raise HTTPException(status_code=400)

@@ -13,7 +13,9 @@ def create_app() -> FastAPI:
     """
     new_app = FastAPI(
         title='Sabytin',
-        version='0.0.1a'
+        version='0.0.1a',
+        # docs_url=None,
+        # redoc_url=None
     )
 
     new_app.include_router(authorization_router)
