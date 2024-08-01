@@ -152,11 +152,13 @@ def list_questionnaires(user_id_var:int, city_var:int, gender_var:int, age_min:i
                               "SELECT id"
                               "FROM creating_grand_selection"
                               "GROUP BY id"
+                              "HVING id NOT IN(SELECT user_id_to FROM likes WHERE user_id_from=%s)"
+                              "AND id NOT IN(SELECT user_id_to FROM dislikes WHERE user_id_from=%s)"
                               "ORDER BY count(*) DESC"
                               )
                 sel_vars = (city_var, gender_var, age_min,age_max, height_min,height_max, city_var, gender_var, age_min,age_max, communication_id_var
                             ,city_var,gender_var,age_min,age_max,interes_1, city_var,gender_var,age_min,age_max,interes_2,
-                            city_var,gender_var,age_min,age_max, interes_3)
+                            city_var,gender_var,age_min,age_max, interes_3,user_id_var,user_id_var)
                 cursor.execute(find_matches,sel_vars)
                 all_questionnaires = cursor.fetchall()
                 if not all_questionnaires:
