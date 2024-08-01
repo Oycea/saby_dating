@@ -55,11 +55,6 @@ def check_password(password: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least one digit"
         )
-    if not any(symb in '!=+$@#%^' for symb in password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The password must contain at least one special character (!=+$@#%^)"
-        )
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
