@@ -25,6 +25,7 @@ class User(BaseModel):
     gender_id: int
     target_id: int
     communication_id: int
+    biography: Optional[str] = None
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login/")
@@ -45,12 +46,12 @@ def check_password(password: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters long"
         )
-    if not any(symb.isalpha() for symb in password):
+    if not any(symbol.isalpha() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must contain at least one letter"
         )
-    if not any(symb.isdigit() for symb in password):
+    if not any(symbol.isdigit() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least one digit"
@@ -82,7 +83,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, "
-                               "communication_id, password FROM users WHERE email = %s",
+                               "communication_id, biography, password FROM users WHERE email = %s",
                                (email,)
                                )
                 event = cursor.fetchone()
@@ -102,7 +103,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
                     height=event[6],
                     gender_id=event[7],
                     target_id=event[8],
-                    communication_id=event[9]
+                    communication_id=event[9],
+                    biography=event[10]
                 )
                 return user
     except JWTError:
@@ -128,7 +130,7 @@ def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[st
                            name='Registers a new user')
 def register(email: EmailStr, password: str, name: str, city: str,
              birthday: date, position: str, height: int, gender_id: int,
-             target_id: int, communication_id: int) -> Dict[str, str]:
+             target_id: int, communication_id: int, biography: Optional[str] = None) -> Dict[str, str]:
     try:
         # Проверка корректности email
         valid = validate_email(email)
@@ -155,12 +157,12 @@ def register(email: EmailStr, password: str, name: str, city: str,
                 cursor.execute(
                     """
                     INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, 
-                    communication_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    communication_id, biography)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING *
                     """,
                     (email, hashed_password, name, city, birthday, position,
-                     height, gender_id, target_id, communication_id)
+                     height, gender_id, target_id, communication_id, biography)
                 )
                 access_token = create_access_token(data={"sub": email})
                 return {"access_token": access_token, "token_type": "bearer"}
@@ -216,13 +218,15 @@ def update_profile(
         height: Optional[int] = Query(None),
         gender_id: Optional[int] = Query(None),
         target_id: Optional[int] = Query(None),
-        communication_id: Optional[int] = Query(None)) -> User:
+        communication_id: Optional[int] = Query(None),
+        biography: Optional[str] = Query(None)) -> User:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT email, name, city, birthday, position, height, gender_id, target_id, communication_id 
+                    SELECT email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography 
                     FROM users WHERE id = %s
                     """,
                     (current_user.id,))
@@ -244,20 +248,24 @@ def update_profile(
                     "gender_id": gender_id or current_data[6],
                     "target_id": target_id or current_data[7],
                     "communication_id": communication_id or current_data[8],
+                    "biography": biography or current_data[9]
                 }
 
                 cursor.execute(
                     """
                     UPDATE users
-                    SET email = %s, name = %s, city = %s, birthday = %s, position = %s, height = %s, gender_id = %s, target_id = %s, communication_id = %s
+                    SET email = %s, name = %s, city = %s, birthday = %s, position = %s, height = %s, gender_id = %s, 
+                    target_id = %s, communication_id = %s, biography = %s
                     WHERE id = %s
-                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id
+                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography
                     """,
                     (updated_data["email"], updated_data["name"],
                      updated_data["city"], updated_data["birthday"],
                      updated_data["position"], updated_data["height"],
                      updated_data["gender_id"], updated_data["target_id"],
-                     updated_data["communication_id"], current_user.id)
+                     updated_data["communication_id"], updated_data["biography"],
+                     current_user.id)
                 )
 
                 new_info = cursor.fetchone()
@@ -277,8 +285,29 @@ def update_profile(
                     height=new_info[6],
                     gender_id=new_info[7],
                     target_id=new_info[8],
-                    communication_id=new_info[9]
+                    communication_id=new_info[9],
+                    biography=new_info[10]
                 )
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(ex)}"
+        )
+
+
+@authorization_router.delete('/profile/', status_code=status.HTTP_204_NO_CONTENT,
+                             name='Delete profile')
+def delete_profile(current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM users WHERE id = %s", (current_user.id,))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="User not found"
+                    )
+                return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

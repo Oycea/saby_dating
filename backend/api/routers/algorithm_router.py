@@ -3,12 +3,11 @@ from fastapi import HTTPException, APIRouter
 from routers.session import open_conn
 from psycopg2.extras import RealDictCursor
 
-
 algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
 
 @algorithm_router.get('/get_all_users/', name='Get all users')
-def get_all_users() -> list[list]:
+def get_all_users() -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -125,62 +124,63 @@ def delete_all_dislikes() -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/list_questionnaires/{user_id}', name='list of assessment questionnaires')
-def list_questionnaires(user_id_var: int, city_var: int, gender_var: int, age_min: int, age_max: int, height_min: int,
-                        height_max: int,
-                        interes_1: str, interes_2: str, interes_3: str, communication_id_var: int) -> list[list]:
+@algorithm_router.get('/list_questionnaires/{user_id}', name='list of assessment questionnaires')
+def list_questionnaires(user_id_var: int) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                frst_request = ("WITH creating_grand_selection as("
-                                "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part("
-                                "'year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE height BETWEEN %s AND %s)"
-                                "UNION"
-                                "(SELECT * FROM (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part("
-                                "'year', age(timestamp birthday)) BETWEEN %s AND %s) WHERE communication_id = %s)"
-                                "UNION"
-                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
-                                "gender_id, target_id, communacation_id"
-                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
-                                "AS join_inters"
-                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
-                                "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
-                                "WHERE title =%s)"
-                                "UNION"
-                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
-                                "gender_id, target_id, communacation_id"
-                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
-                                "AS join_inters"
-                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
-                                "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
-                                "WHERE title =%s)"
-                                "UNION"
-                                "(SELECT U.id as id, email, 'password', 'name', city, birthday, 'position', height, "
-                                "gender_id, target_id, communacation_id"
-                                "FROM (users_interests JOIN interests ON users_interests.interests_id = interests.id) "
-                                "AS join_inters"
-                                "JOIN (SELECT * FROM users WHERE city=%s AND gender_id=%s AND date_part('year', "
-                                "age(timestamp birthday)) BETWEEN %s AND %s) AS U ON join_inters.user_id = U.id"
-                                "WHERE title =%s)"
+                frst_request = ("CREATE TABLE #tmp_interests"
+                                "SELECT ui.user_id as id FROM "
+                                "("
+                                "filter_interests as fi JOIN user_interests AS ui "
+                                "ON fi.interest_id = ui.interest_id "
                                 ")"
+                                "WHERE fi.user_id = %s AND ui.user_id <> %s;"
+                                ""
+                                "CREATE TABLE #tmp_table SELECT id FROM"
+                                "("
+                                "(SELECT id FROM users WHERE city = (SELECT city FROM filters WHERE user_id = %s) AND "
+                                "id <> %s)"
+                                "UNION ALL"
+                                "(SELECT id FROM users WHERE gender_id = (SELECT gender_id FROM filters WHERE user_id "
+                                "= %s) AND id <> %s)"
+                                "UNION ALL"
+                                "(SELECT id FROM users WHERE target_id = (SELECT target_id FROM filters WHERE user_id "
+                                "= %s) AND id <> %s)"
+                                "UNION ALL"
+                                "(SELECT id FROM users WHERE communication_id = (SELECT communication_id FROM filters "
+                                "WHERE user_id = %s) AND id <> %s)"
+                                "UNION ALL"
+                                "(SELECT id FROM users WHERE height BETWEEN (SELECT height_min FROM filters WHERE "
+                                "user_id = %s) AND (SELECT height_max FROM filters WHERE user_id = %s) AND id <> %s)"
+                                "UNION ALL"
+                                "(SELECT id FROM users WHERE date_part('year',age(timestamp birthday)) BETWEEN (SELECT "
+                                "age_min FROM filters WHERE user_id = %s) AND (SELECT age_max FROM filters WHERE "
+                                "user_id = %s) AND id <> %s)"
+                                ");"
+                                ""
                                 "SELECT id"
-                                "FROM creating_grand_selection"
+                                "FROM (SELECT id FROM #tmp_interests UNION ALL #tmp_table)"
                                 "GROUP BY id"
                                 "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_like_from = %s)"
                                 "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s)"
-                                "ORDER BY count(*) DESC"
+                                "ORDER BY count(*) DESC;"
+                                ""
+                                "DROP TABLE #tmp_interests;"
+                                "DROP TABLE #tmp_table;"
                                 )
                 sel_vars = (
-                    city_var, gender_var, age_min, age_max, height_min, height_max, city_var, gender_var, age_min,
-                    age_max,
-                    communication_id_var,
-                    city_var, gender_var, age_min, age_max, interes_1, city_var, gender_var, age_min, age_max,
-                    interes_2,
-                    city_var, gender_var, age_min, age_max, interes_3, user_id_var, user_id_var)
+                    user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var,
+                    user_id_var,
+                    user_id_var,
+                    user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var,
+                    user_id_var,
+                    user_id_var)
                 cursor.execute(frst_request, sel_vars)
                 all_questionnaires = cursor.fetchall()
                 if not all_questionnaires:
-                    raise HTTPException(status_code=404, detail="Matches not found")
+                    raise HTTPException(status_code=404, detail="Questionnaires not found")
+                all_questionnaires = [quest[0] for quest in all_questionnaires]
                 return all_questionnaires
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
