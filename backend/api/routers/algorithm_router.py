@@ -7,7 +7,7 @@ algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
 
 @algorithm_router.get('/get_all_users/', name='Get all users')
-def get_all_users() -> list[list]:
+def get_all_users() -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -129,15 +129,15 @@ def list_questionnaires(user_id_var: int) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                frst_request = ("CREATE TABLE #tmp_interests "
+                frst_request = ("CREATE TABLE #tmp_interests"
                                 "SELECT ui.user_id as id FROM "
                                 "("
-                                "filter_interests as fi JOIN user_interests as ui "
+                                "filter_interests as fi JOIN user_interests AS ui "
                                 "ON fi.interest_id = ui.interest_id "
                                 ")"
                                 "WHERE fi.user_id = %s AND ui.user_id <> %s;"
                                 ""
-                                "CREATE TABLE #tmp_table SELECT id FROM "
+                                "CREATE TABLE #tmp_table SELECT id FROM"
                                 "("
                                 "(SELECT id FROM users WHERE city = (SELECT city FROM filters WHERE user_id = %s) AND "
                                 "id <> %s)"
@@ -151,10 +151,10 @@ def list_questionnaires(user_id_var: int) -> list[int]:
                                 "(SELECT id FROM users WHERE communication_id = (SELECT communication_id FROM filters "
                                 "WHERE user_id = %s) AND id <> %s)"
                                 "UNION ALL"
-                                "(SELECT id FROM users WHERE height BETEEN (SELECT height_min FROM filters WHERE "
+                                "(SELECT id FROM users WHERE height BETWEEN (SELECT height_min FROM filters WHERE "
                                 "user_id = %s) AND (SELECT height_max FROM filters WHERE user_id = %s) AND id <> %s)"
                                 "UNION ALL"
-                                "(SELECT id FROM users WHERE date_part('year',age(timestamp birthday)) BETEEN (SELECT "
+                                "(SELECT id FROM users WHERE date_part('year',age(timestamp birthday)) BETWEEN (SELECT "
                                 "age_min FROM filters WHERE user_id = %s) AND (SELECT age_max FROM filters WHERE "
                                 "user_id = %s) AND id <> %s)"
                                 ");"
