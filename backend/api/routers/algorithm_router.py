@@ -129,45 +129,42 @@ def list_questionnaires(user_id_var: int) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                frst_request = ("CREATE TABLE #tmp_interests"
+                first_request = ("WITH tmp_interests AS( "
                                 "SELECT ui.user_id as id FROM "
-                                "("
-                                "filter_interests as fi JOIN user_interests AS ui "
+                                "( "
+                                "filters_interests as fi JOIN users_interests AS ui "
                                 "ON fi.interest_id = ui.interest_id "
                                 ")"
-                                "WHERE fi.user_id = %s AND ui.user_id <> %s;"
-                                ""
-                                "CREATE TABLE #tmp_table SELECT id FROM"
-                                "("
+                                "WHERE fi.user_id = %s AND ui.user_id <> %s), "
+                                " "
+                                "tmp_table AS "
+                                "( "
                                 "(SELECT id FROM users WHERE city = (SELECT city FROM filters WHERE user_id = %s) AND "
-                                "id <> %s)"
-                                "UNION ALL"
+                                "id <> %s) "
+                                " UNION ALL "
                                 "(SELECT id FROM users WHERE gender_id = (SELECT gender_id FROM filters WHERE user_id "
-                                "= %s) AND id <> %s)"
-                                "UNION ALL"
+                                "= %s) AND id <> %s) "
+                                " UNION ALL "
                                 "(SELECT id FROM users WHERE target_id = (SELECT target_id FROM filters WHERE user_id "
-                                "= %s) AND id <> %s)"
-                                "UNION ALL"
+                                "= %s) AND id <> %s) "
+                                " UNION ALL "
                                 "(SELECT id FROM users WHERE communication_id = (SELECT communication_id FROM filters "
-                                "WHERE user_id = %s) AND id <> %s)"
-                                "UNION ALL"
+                                "WHERE user_id = %s) AND id <> %s) "
+                                " UNION ALL "
                                 "(SELECT id FROM users WHERE height BETWEEN (SELECT height_min FROM filters WHERE "
-                                "user_id = %s) AND (SELECT height_max FROM filters WHERE user_id = %s) AND id <> %s)"
-                                "UNION ALL"
-                                "(SELECT id FROM users WHERE date_part('year',age(timestamp birthday)) BETWEEN (SELECT "
+                                "user_id = %s) AND (SELECT height_max FROM filters WHERE user_id = %s) AND id <> %s) "
+                                " UNION ALL "
+                                "(SELECT id FROM users WHERE date_part('YEAR', AGE(DATE(birthday))) BETWEEN (SELECT "
                                 "age_min FROM filters WHERE user_id = %s) AND (SELECT age_max FROM filters WHERE "
-                                "user_id = %s) AND id <> %s)"
-                                ");"
-                                ""
-                                "SELECT id"
-                                "FROM (SELECT id FROM #tmp_interests UNION ALL #tmp_table)"
-                                "GROUP BY id"
-                                "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_like_from = %s)"
-                                "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s)"
-                                "ORDER BY count(*) DESC;"
-                                ""
-                                "DROP TABLE #tmp_interests;"
-                                "DROP TABLE #tmp_table;"
+                                "user_id = %s) AND id <> %s) "
+                                ") "
+                                " "
+                                "SELECT id "
+                                "FROM (SELECT id FROM tmp_interests UNION ALL SELECT id FROM tmp_table) "
+                                "GROUP BY id "
+                                "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_id_from = %s) "
+                                "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s) "
+                                "ORDER BY count(*) DESC; "
                                 )
                 sel_vars = (
                     user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var,
@@ -176,8 +173,15 @@ def list_questionnaires(user_id_var: int) -> list[int]:
                     user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var,
                     user_id_var,
                     user_id_var)
-                cursor.execute(frst_request, sel_vars)
+                cursor.execute(first_request, sel_vars)
                 all_questionnaires = cursor.fetchall()
+                if not all_questionnaires:
+                    second_request = ("SELECT id FROM users WHERE id <> %s "
+                                      "AND id NOT IN (SELECT user_id_to FROM likes WHERE user_id_from = %s) "
+                                      "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s) ")
+                    sel_vars = (user_id_var, user_id_var, user_id_var)
+                    cursor.execute(second_request, sel_vars)
+                    all_questionnaires = cursor.fetchall()
                 if not all_questionnaires:
                     raise HTTPException(status_code=404, detail="Questionnaires not found")
                 all_questionnaires = [quest[0] for quest in all_questionnaires]
