@@ -160,11 +160,14 @@ def list_questionnaires(user_id_var: int) -> list[int]:
                                 ");"
                                 ""
                                 "SELECT id"
-                                "FROM (SELECT id FROM #tmp_interests UNION ALL tmp_table)"
+                                "FROM (SELECT id FROM #tmp_interests UNION ALL #tmp_table)"
                                 "GROUP BY id"
                                 "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_like_from = %s)"
                                 "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s)"
                                 "ORDER BY count(*) DESC;"
+                                ""
+                                "DROP TABLE #tmp_interests;"
+                                "DROP TABLE #tmp_table;"
                                 )
                 sel_vars = (
                     user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var, user_id_var,
