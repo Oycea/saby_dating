@@ -46,12 +46,12 @@ def check_password(password: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters long"
         )
-    if not any(symb.isalpha() for symb in password):
+    if not any(symbol.isalpha() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must contain at least one letter"
         )
-    if not any(symb.isdigit() for symb in password):
+    if not any(symbol.isdigit() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least one digit"
@@ -225,7 +225,8 @@ def update_profile(
             with connection.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT email, name, city, birthday, position, height, gender_id, target_id, communication_id, biography 
+                    SELECT email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography 
                     FROM users WHERE id = %s
                     """,
                     (current_user.id,))
@@ -253,9 +254,11 @@ def update_profile(
                 cursor.execute(
                     """
                     UPDATE users
-                    SET email = %s, name = %s, city = %s, birthday = %s, position = %s, height = %s, gender_id = %s, target_id = %s, communication_id = %s, biography = %s
+                    SET email = %s, name = %s, city = %s, birthday = %s, position = %s, height = %s, gender_id = %s, 
+                    target_id = %s, communication_id = %s, biography = %s
                     WHERE id = %s
-                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, biography
+                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography
                     """,
                     (updated_data["email"], updated_data["name"],
                      updated_data["city"], updated_data["birthday"],
