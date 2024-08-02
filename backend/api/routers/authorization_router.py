@@ -88,25 +88,25 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                                "communication_id, biography, password FROM users WHERE email = %s",
                                (email,)
                                )
-                event = cursor.fetchone()
-                if event is None:
+                user_data = cursor.fetchone()
+                if user_data is None:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Не удалось подтвердить данные",
                         headers={"WWW-Authenticate": "Basic"},
                     )
                 user = User(
-                    id=event[0],
-                    email=event[1],
-                    name=event[2],
-                    city=event[3],
-                    birthday=event[4],
-                    position=event[5],
-                    height=event[6],
-                    gender_id=event[7],
-                    target_id=event[8],
-                    communication_id=event[9],
-                    biography=event[10]
+                    id=user_data[0],
+                    email=user_data[1],
+                    name=user_data[2],
+                    city=user_data[3],
+                    birthday=user_data[4],
+                    position=user_data[5],
+                    height=user_data[6],
+                    gender_id=user_data[7],
+                    target_id=user_data[8],
+                    communication_id=user_data[9],
+                    biography=user_data[10]
                 )
                 return user
     except JWTError:
