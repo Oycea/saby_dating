@@ -1,10 +1,19 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from routers.event_router import event_router
 from routers.channel_router import channel_router
 from routers.algorithm_router import algorithm_router
 from routers.authorization_router import authorization_router
 from routers.pass_reset_routers import router as pass_reset_router
+
+origins = [
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "http://localhost",
+    "http://localhost:8080",
+    "http://localhost:8000"
+]
 
 
 def create_app() -> FastAPI:
@@ -16,6 +25,14 @@ def create_app() -> FastAPI:
         version='0.0.1a',
         # docs_url=None,
         # redoc_url=None
+    )
+
+    new_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     new_app.include_router(authorization_router)

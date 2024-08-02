@@ -1,13 +1,14 @@
 import psycopg2
 from fastapi import HTTPException, APIRouter
-from routers.session import open_conn
 from psycopg2.extras import RealDictCursor
+
+from routers.session import open_conn
 
 algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
 
 @algorithm_router.get('/get_all_users/', name='Get all users')
-def get_all_users() -> list[list]:
+def get_all_users() -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
