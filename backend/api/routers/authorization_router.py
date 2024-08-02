@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Dict, Any, Optional
 
 from email_validator import validate_email, EmailNotValidError
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query, Form
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.hash import argon2
@@ -290,6 +290,47 @@ def update_profile(
                     communication_id=new_info[9],
                     biography=new_info[10]
                 )
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+@authorization_router.patch('/profile/change_password/', status_code=status.HTTP_200_OK,
+                            name='Изменение пароля')
+def change_password(
+        old_password: str = Form(...),
+        new_password: str = Form(...),
+        current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT password FROM users WHERE id = %s",
+                               (current_user.id,))
+                user_password = cursor.fetchone()
+                if user_password is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Пользователь не найден"
+                    )
+                hashed_old_password = user_password[0]
+                if not verify_password(old_password, hashed_old_password):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Неверный старый пароль"
+                    )
+                check_password(new_password)
+                hashed_new_password = get_password_hash(new_password)
+
+                cursor.execute("UPDATE users SET password = %s WHERE id = %s",
+                               (hashed_new_password, current_user.id))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Не удалось обновить пароль"
+                    )
+                return {"detail": "Пароль изменён"}
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
