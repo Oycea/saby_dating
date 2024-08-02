@@ -125,9 +125,7 @@ def delete_all_dislikes() -> dict[str, str]:
 
 
 @algorithm_router.get('/list_questionnaires/{user_id}', name='list of assessment questionnaires')
-def list_questionnaires(user_id_var: int, city_var: int, gender_var: int, age_min: int, age_max: int, height_min: int,
-                        height_max: int,
-                        interes_1: str, interes_2: str, interes_3: str, communication_id_var: int) -> list[list]:
+def list_questionnaires(user_id_var: int) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -179,6 +177,7 @@ def list_questionnaires(user_id_var: int, city_var: int, gender_var: int, age_mi
                 all_questionnaires = cursor.fetchall()
                 if not all_questionnaires:
                     raise HTTPException(status_code=404, detail="Questionnaires not found")
+                all_questionnaires = [quest[0] for quest in all_questionnaires]
                 return all_questionnaires
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
