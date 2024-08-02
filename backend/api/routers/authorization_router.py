@@ -72,9 +72,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     return encoded_jwt
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise HTTPException(
@@ -135,8 +135,8 @@ def register(email: EmailStr, password: str, name: str, city: str,
              target_id: int, communication_id: int, biography: Optional[str] = None) -> Dict[str, str]:
     try:
         # Проверка корректности email
-        valid = validate_email(email)
-        email = valid.email
+        validated_email = validate_email(email)
+        email = validated_email.email
     except EmailNotValidError as ex:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -148,8 +148,8 @@ def register(email: EmailStr, password: str, name: str, city: str,
             with connection.cursor() as cursor:
                 # Проверка email
                 cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-                event = cursor.fetchone()
-                if event:
+                user_data = cursor.fetchone()
+                if user_data:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Почта уже зарегистрирована"
@@ -184,15 +184,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT password FROM users WHERE email = %s", (email,))
-                event = cursor.fetchone()
-                if event is None:
+                user_data = cursor.fetchone()
+                if user_data is None:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Неверные почта или пароль",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
 
-                hashed_password = event[0]
+                hashed_password = user_data[0]
                 if not verify_password(password, hashed_password):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
