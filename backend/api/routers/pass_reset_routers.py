@@ -22,12 +22,12 @@ subject = 'password reset'
 from_email = 'datesaby@gmail.com'
 
 
-@router.get("/reset-password-form/", response_class=HTMLResponse)
+@router.get("/reset_password_form/", response_class=HTMLResponse)
 async def reset_password_form_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@router.get("/reset-password/{token}", response_class=HTMLResponse)
+@router.get("/reset_password/{token}", response_class=HTMLResponse)
 async def reset_password_form(request: Request, token: str):
     email = verify_reset_password_token(token)
     if email is None:
@@ -35,12 +35,12 @@ async def reset_password_form(request: Request, token: str):
     return templates.TemplateResponse("reset_password.html", {"request": request, "token": token})
 
 
-@router.post("/reset-password/")
+@router.post("/reset_password/")
 async def reset_password(request: Request, email: str = Form(...)):
+    print(SMTP_PASSWORD,SMTP_SERVER,SMTP_PORT,SMTP_USER)
     if is_registrated(email):
         token = create_reset_password_token(email)
-        reset_password_url = f"http://localhost:8000/reset-password/{token}"
-        print(reset_password_url)
+        reset_password_url = f"http://127.0.0.1:8000/reset_password/{token}"
         body = f"Ссылка для сброса пароля: {reset_password_url}"
         msg = MIMEText(body)
         msg['Subject'] = subject
@@ -52,15 +52,15 @@ async def reset_password(request: Request, email: str = Form(...)):
                 server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
                 server.send_message(msg)
-        except smtplib.SMTPAuthenticationError:
-            raise HTTPException(status_code=400)
-        except Exception:
-            raise HTTPException(status_code=400)
+        except smtplib.SMTPAuthenticationError as e:
+            raise HTTPException(status_code=400, detail=f"Authentication error: {str(e)}")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"An error occurred: {str(e)}")
         return templates.TemplateResponse("reset_sent.html", {"request": request})
-    raise HTTPException(status_code=404, detail="U r not in base")
+    raise HTTPException(status_code=404, detail="You are not in the database")
 
 
-@router.post("/reset-password/{token}")
+@router.post("/reset_password/{token}")
 async def process_reset_password(request: Request, token: str, password: str = Form(...),
                                  confirm_password: str = Form(...)):
     if password != confirm_password:
