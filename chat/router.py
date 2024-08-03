@@ -1,3 +1,4 @@
+import datetime
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from session import get_database_connection
@@ -19,10 +20,11 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    async def broadcast(self, user_id: int, message: str):
+    async def broadcast(self, user_id: int, message: str, date: str):
         message_data = {
             "userId": user_id,
-            "message": message
+            "message": message,
+            "date": date,
         }
         for connection in self.active_connections:
             await connection.send_text(json.dumps(message_data))
@@ -40,15 +42,17 @@ async def websocket_endpoint(websocket: WebSocket):
             data_json = json.loads(data)
             message = data_json.get("message")
             user_id = data_json.get("userId")
+            date = datetime.datetime.now().strftime("%H:%M")
 
             try:
                 with get_database_connection() as conn:
                     with conn.cursor() as cursor:
-                        cursor.execute("INSERT INTO messages(user_id, message) VALUES(%s, %s)", (user_id, message))
+                        cursor.execute("INSERT INTO messages(user_id, message, date) VALUES(%s, %s, %s)", (user_id, message, datetime.datetime.now()))
+                        print(datetime.datetime.now())
             except Exception as ex:
                 raise HTTPException(status_code=500, detail=str(ex))
 
-            await manager.broadcast(user_id, message)
+            await manager.broadcast(user_id, message, date)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
@@ -59,9 +63,9 @@ async def load_messages(offset: int = 30, limit: int = 30):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT user_id, message FROM messages ORDER BY id DESC LIMIT %s OFFSET %s", (limit, offset))
-                text = cursor.fetchall()  # Возвращает кортеж user_id и message
-                return text
+                cursor.execute("SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages ORDER BY id DESC LIMIT %s OFFSET %s", (limit, offset))
+                result = cursor.fetchall()  # Возвращает кортеж user_id, message и date
+                return result
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
