@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница входа</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="login-form bg-white p-4 rounded shadow-sm mx-auto" style="max-width: 400px;">
+            <div class="form-header text-center mb-4">
+                <h2 class="text-primary">Вход</h2>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Имя пользователя</label>
+                    <input type="text" class="form-control" id="username" placeholder="Введите имя пользователя" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" class="form-control" id="password" placeholder="Пароль" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Войти</button>
+            </form>
+            <div class="text-center mt-3">
+                <p class="text-muted small"><a href="registration.html" class="text-muted text-decoration-underline">Нет аккаунта? Зарегистрируйтесь.</a></p>
+            </div>
+            <div class="text-center mt-3">
+                <p class="text-muted small"><a href="password_reset.html" class="text-muted text-decoration-underline">Забыли пароль?</a></p>
+            </div>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+    const url = 'http://195.133.201.168:8000/authorization/login/';
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'password');
+    formData.append('username', username);
+    formData.append('password', password);
+    formData.append('scope', '');
+    formData.append('client_id', 'string');
+    formData.append('client_secret', 'string');
+
+    fetch(proxyUrl + url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert('Вход успешен!');
+        console.log('Success:', data);
+
+        // Сохранение access_token в localStorage
+        localStorage.setItem('access_token', data.access_token);
+
+        // Перенаправление на страницу profile.html
+        window.location.href = 'profile.html';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при входе.');
+    });
+});
+
+    </script>
+</body>
+</html>

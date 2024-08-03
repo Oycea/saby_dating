@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница регистрации</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="registration-form bg-white p-4 rounded shadow-sm mx-auto" style="max-width: 400px;">
+            <div class="form-header text-center mb-4">
+                <h2 class="text-primary">Регистрация</h2>
+            </div>
+            <form id="registration-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control" id="email" placeholder="Введите email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" class="form-control" id="password" placeholder="Пароль" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Подтвердите пароль</label>
+                    <input type="password" class="form-control" id="confirm-password" placeholder="Подтвердите пароль" required>
+                </div>
+                <div class="form-group">
+                    <label for="name">Имя</label>
+                    <input type="text" class="form-control" id="name" placeholder="Введите ваше имя" required>
+                </div>
+                <div class="form-group">
+                    <label for="city">Город</label>
+                    <input type="text" class="form-control" id="city" placeholder="Введите ваш город" required>
+                </div>
+                <div class="form-group">
+                    <label for="birthday">Дата рождения</label>
+                    <input type="date" class="form-control" id="birthday" required>
+                </div>
+                <div class="form-group">
+                    <label for="position">Позиция</label>
+                    <input type="text" class="form-control" id="position" placeholder="Введите вашу позицию" required>
+                </div>
+                <div class="form-group">
+                    <label for="height">Рост</label>
+                    <input type="number" class="form-control" id="height" placeholder="Введите ваш рост" required>
+                </div>
+                <div class="form-group">
+                    <label for="gender_id">ID пола</label>
+                    <input type="number" class="form-control" id="gender_id" placeholder="Введите ID пола" required>
+                </div>
+                <div class="form-group">
+                    <label for="target_id">ID цели</label>
+                    <input type="number" class="form-control" id="target_id" placeholder="Введите ID цели" required>
+                </div>
+                <div class="form-group">
+                    <label for="communication_id">ID связи</label>
+                    <input type="number" class="form-control" id="communication_id" placeholder="Введите ID связи" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
+            </form>
+            <div class="text-center mt-3">
+                <p class="text-muted small"><a href="login.html" class="text-muted text-decoration-underline">Уже есть аккаунт? Войти.</a></p>
+            </div>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('registration-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const name = document.getElementById('name').value;
+            const city = document.getElementById('city').value;
+            const birthday = document.getElementById('birthday').value;
+            const position = document.getElementById('position').value;
+            const height = document.getElementById('height').value;
+            const gender_id = document.getElementById('gender_id').value;
+            const target_id = document.getElementById('target_id').value;
+            const communication_id = document.getElementById('communication_id').value;
+
+            if (password !== confirmPassword) {
+                alert('Пароли не совпадают.');
+                return;
+            }
+
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const url = `http://195.133.201.168:8000/authorization/register/?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}&birthday=${encodeURIComponent(birthday)}&position=${encodeURIComponent(position)}&height=${encodeURIComponent(height)}&gender_id=${encodeURIComponent(gender_id)}&target_id=${encodeURIComponent(target_id)}&communication_id=${encodeURIComponent(communication_id)}`;
+
+            fetch(proxyUrl + encodeURIComponent(url), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Регистрация успешна!');
+                console.log('Success:', data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при регистрации.');
+            });
+        });
+    </script>
+</body>
+</html>

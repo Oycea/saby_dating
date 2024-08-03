@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диалоги</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 800px; / Устанавливаем максимальную ширину контейнера /
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="row">
+            <nav class="col-md-3">
+                <div class="list-group">
+                    <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
+                    <a href="dialogs.html" class="list-group-item list-group-item-action active">Диалоги</a>
+                    <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
+                </div>
+            </nav>
+            <main class="col-md-9">
+                <div class="dialogs-page bg-white p-4 rounded shadow-sm">
+                    <div class="form-header text-center mb-4">
+                        <h2 class="text-primary">Диалоги</h2>
+                    </div>
+                    <div class="dialogs-list">
+                        <ul class="list-group">
+                            <li class="list-group-item list-group-item-action">
+                                <div class="d-flex align-items-center">
+                                    <img src="user-avatar.png" alt="Фото пользователя" class="rounded-circle" style="width: 40px; height: 40px;">
+                                    <div class="ml-3">
+                                        <h6 class="mb-0">Имя пользователя</h6>
+                                        <span class="text-muted">Последнее сообщение: "Привет!"</span>
+                                    </div>
+                                </div>
+                            </li>
+                            </ul>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

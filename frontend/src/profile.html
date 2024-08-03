@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница аккаунта</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 800px;
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="row">
+            <nav class="col-md-3">
+                <div class="list-group">
+                    <a href="profile.html" class="list-group-item list-group-item-action active">Аккаунт</a>
+                    <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
+                    <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
+                </div>
+            </nav>
+            <main class="col-md-9">
+                <div class="account-page bg-white p-4 rounded shadow-sm">
+                    <div class="form-header text-center mb-4">
+                        <h2 class="text-primary">Личный кабинет</h2>
+                    </div>
+                    <div class="account-info mb-4">
+                        <div class="text-center">
+                            <div>
+                                <img id="profile-image" class="rounded-circle" src="default-profile.png" alt="Фото профиля" style="width: 100px; height: 100px; object-fit: cover;">
+                            </div>
+                            <input type="file" id="upload-image" accept="image/*" style="display: none;">
+                            <button class="btn btn-secondary mt-2" onclick="document.getElementById('upload-image').click()">Загрузить фото</button>
+                        </div>
+                        <h4 class="mb-3 mt-4">Информация о пользователе</h4>
+                        <ul class="list-group" id="user-info">
+                            <li class="list-group-item">Имя пользователя: <span id="user-name" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Email: <span id="user-email" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Дата регистрации: <span id="user-registration-date" class="font-weight-bold">Загрузка...</span></li>
+                        </ul>
+                    </div>
+                    <div class="account-actions">
+                        <a href="edit_profile.html" class="btn btn-primary">Изменить профиль</a>
+                        <a href="index.html" class="btn btn-danger">Выйти</a>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const url = 'http://195.133.201.168:8000/authorization/user/me';
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const accessToken = localStorage.getItem('access_token');
+
+            if (!accessToken) {
+                // Перенаправление на страницу входа, если токен не найден
+                window.location.href = 'login.html';
+                return;
+            }
+
+            fetch(url + proxyUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + accessToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('user-name').textContent = data.name;
+                document.getElementById('user-email').textContent = data.email;
+                document.getElementById('user-registration-date').textContent = data.registration_date;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Произошла ошибка при загрузке информации о пользователе.');
+            });
+
+            const uploadImage = document.getElementById('upload-image');
+            const profileImage = document.getElementById('profile-image');
+
+            uploadImage.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    profileImage.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            });
+        });
+    </script>
+</body>
+</html>
