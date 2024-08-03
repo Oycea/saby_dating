@@ -1,15 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query
-from pydantic import BaseModel, EmailStr
-from passlib.hash import argon2
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
-from email_validator import validate_email, EmailNotValidError
-from typing import Dict, Any, Optional
 import time
-from starlette.middleware.base import BaseHTTPMiddleware
-from routers.session import open_conn
 from datetime import date, datetime, timedelta
+from typing import Dict, Any, Optional
+
+from email_validator import validate_email, EmailNotValidError
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query, Form
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import JWTError, jwt
+from passlib.hash import argon2
+from pydantic import BaseModel, EmailStr
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from routers.session import open_conn
 
 authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
 
@@ -44,21 +46,21 @@ def check_password(password: str) -> None:
     if len(password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long"
+            detail="Пароль должен содержать не менее 8 символов"
         )
     if not any(symbol.isalpha() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least one letter"
+            detail="Пароль должен содержать хотя бы одну букву"
         )
     if not any(symbol.isdigit() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least one digit"
+            detail="Пароль должен содержать хотя бы одну цифру"
         )
 
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -70,14 +72,14 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
+                detail="Не удалось подтвердить данные",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         with open_conn() as connection:
@@ -86,59 +88,59 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
                                "communication_id, biography, password FROM users WHERE email = %s",
                                (email,)
                                )
-                event = cursor.fetchone()
-                if event is None:
+                user_data = cursor.fetchone()
+                if user_data is None:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Could not validate credentials",
+                        detail="Не удалось подтвердить данные",
                         headers={"WWW-Authenticate": "Basic"},
                     )
                 user = User(
-                    id=event[0],
-                    email=event[1],
-                    name=event[2],
-                    city=event[3],
-                    birthday=event[4],
-                    position=event[5],
-                    height=event[6],
-                    gender_id=event[7],
-                    target_id=event[8],
-                    communication_id=event[9],
-                    biography=event[10]
+                    id=user_data[0],
+                    email=user_data[1],
+                    name=user_data[2],
+                    city=user_data[3],
+                    birthday=user_data[4],
+                    position=user_data[5],
+                    height=user_data[6],
+                    gender_id=user_data[7],
+                    target_id=user_data[8],
+                    communication_id=user_data[9],
+                    biography=user_data[10]
                 )
                 return user
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="Не удалось подтвердить данные",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
 
-@authorization_router.get('/user/me', response_model=User, name='Get user by token')
+@authorization_router.get('/user/me', response_model=User, name='Получение пользователя по токену')
 def read_user_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-@authorization_router.get('/user/me/dict', response_model=User,
-                          name='Get user as dictionary by token')
+@authorization_router.get('/user/me/dict', response_model=Dict[str, Any],
+                          name='Получение пользователя в виде словаря по токену')
 def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     return current_user.dict()
 
 
 @authorization_router.post('/register/', status_code=status.HTTP_200_OK,
-                           name='Registers a new user')
+                           name='Регистрация нового пользователя')
 def register(email: EmailStr, password: str, name: str, city: str,
              birthday: date, position: str, height: int, gender_id: int,
              target_id: int, communication_id: int, biography: Optional[str] = None) -> Dict[str, str]:
     try:
         # Проверка корректности email
-        valid = validate_email(email)
-        email = valid.email
+        validated_email = validate_email(email)
+        email = validated_email.email
     except EmailNotValidError as ex:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid email address: {str(ex)}"
+            detail=f"Неверный адрес электронной почты: {str(ex)}"
         )
     check_password(password)
     try:
@@ -146,11 +148,11 @@ def register(email: EmailStr, password: str, name: str, city: str,
             with connection.cursor() as cursor:
                 # Проверка email
                 cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-                event = cursor.fetchone()
-                if event:
+                user_data = cursor.fetchone()
+                if user_data:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Email already registered"
+                        detail="Почта уже зарегистрирована"
                     )
 
                 hashed_password = get_password_hash(password)
@@ -169,12 +171,12 @@ def register(email: EmailStr, password: str, name: str, city: str,
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
 
 
-@authorization_router.post('/login/', response_model=dict, name='Login')
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
+@authorization_router.post('/login/', response_model=Dict[str, str], name='Вход в систему')
+def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
     email = form_data.username
     password = form_data.password
 
@@ -182,19 +184,19 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT password FROM users WHERE email = %s", (email,))
-                event = cursor.fetchone()
-                if event is None:
+                user_data = cursor.fetchone()
+                if user_data is None:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Incorrect email or password",
+                        detail="Неверные почта или пароль",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
 
-                hashed_password = event[0]
+                hashed_password = user_data[0]
                 if not verify_password(password, hashed_password):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Incorrect email or password",
+                        detail="Неверные почта или пароль",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
 
@@ -203,11 +205,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
 
 
-@authorization_router.patch('/profile/', response_model=User, name='Update profile')
+@authorization_router.patch('/profile/', response_model=User, name='Обновление профиля')
 def update_profile(
         current_user: User = Depends(get_current_user),
         email: Optional[EmailStr] = Query(None),
@@ -235,7 +237,7 @@ def update_profile(
                 if not current_data:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail="User not found"
+                        detail="Пользователь не найден"
                     )
 
                 updated_data = {
@@ -272,7 +274,7 @@ def update_profile(
                 if not new_info:
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Failed to update user"
+                        detail="Не удалось обновить информацию"
                     )
 
                 return User(
@@ -291,13 +293,54 @@ def update_profile(
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+@authorization_router.patch('/profile/change_password/', status_code=status.HTTP_200_OK,
+                            name='Изменение пароля')
+def change_password(
+        old_password: str = Form(...),
+        new_password: str = Form(...),
+        current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT password FROM users WHERE id = %s",
+                               (current_user.id,))
+                user_password = cursor.fetchone()
+                if user_password is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Пользователь не найден"
+                    )
+                hashed_old_password = user_password[0]
+                if not verify_password(old_password, hashed_old_password):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Неверный старый пароль"
+                    )
+                check_password(new_password)
+                hashed_new_password = get_password_hash(new_password)
+
+                cursor.execute("UPDATE users SET password = %s WHERE id = %s",
+                               (hashed_new_password, current_user.id))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Не удалось обновить пароль"
+                    )
+                return {"detail": "Пароль изменён"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
 
 
 @authorization_router.delete('/profile/', status_code=status.HTTP_204_NO_CONTENT,
-                             name='Delete profile')
-def delete_profile(current_user: User = Depends(get_current_user)):
+                             name='Удаление профиля')
+def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -305,13 +348,13 @@ def delete_profile(current_user: User = Depends(get_current_user)):
                 if cursor.rowcount == 0:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail="User not found"
+                        detail="Пользователь не найден"
                     )
                 return Response(status_code=status.HTTP_204_NO_CONTENT)
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(ex)}"
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
 
 
@@ -332,7 +375,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.attempts[client_ip] = [t for t in self.attempts[client_ip] if t > current_time - self.period]
 
         if len(self.attempts[client_ip]) >= self.max_attempts:
-            return Response("Try later", status_code=429)
+            return Response("Попробуйте позже", status_code=429)
 
         response = await call_next(request)
         if request.url.path == "/login/" and response.status_code == 200:
