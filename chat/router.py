@@ -42,13 +42,15 @@ async def websocket_endpoint(websocket: WebSocket):
             data_json = json.loads(data)
             message = data_json.get("message")
             user_id = data_json.get("userId")
+            dialogue_id = data_json.get("dialogue_id")
             date = datetime.datetime.now().strftime("%H:%M")
 
             try:
                 with get_database_connection() as conn:
                     with conn.cursor() as cursor:
-                        cursor.execute("INSERT INTO messages(user_id, message, date) VALUES(%s, %s, %s)", (user_id, message, datetime.datetime.now()))
-                        print(datetime.datetime.now())
+                        cursor.execute(
+                            "INSERT INTO messages(user_id, message, date, dialogue_id) VALUES(%s, %s, %s, %s)",
+                            (user_id, message, datetime.datetime.now(), dialogue_id))
             except Exception as ex:
                 raise HTTPException(status_code=500, detail=str(ex))
 
@@ -63,9 +65,10 @@ async def load_messages(offset: int = 30, limit: int = 30):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages ORDER BY id DESC LIMIT %s OFFSET %s", (limit, offset))
+                cursor.execute(
+                    "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages ORDER BY id DESC LIMIT %s OFFSET %s",
+                    (limit, offset))
                 result = cursor.fetchall()  # Возвращает кортеж user_id, message и date
                 return result
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
-
