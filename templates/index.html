@@ -8,12 +8,12 @@
     </head>
     <body>
     <div class="menu">
-        <div class="back"><img src=""/></div>
-        <div class="name">Кто-то</div>
+        <div class="back"><img src="{{ other_user['profile_image'] }}"/></div>
+        <div class="name">{{ other_user['name'] }}</div>
     </div>
     <ol id='messages' class="chat">
         {% for message in limited_result|reverse %}
-            {% if message[0] == user.id %}
+            {% if message[0] == self_user.id %}
                 <!--Первое значение - id пользователя, которому принадлежит сообщение, второе - само сообщение, третье - дата -->
                 <li class="self">
                     <div class="avatar"><img src="{{ profile_image }}"/></div>
@@ -24,7 +24,7 @@
                 </li>
             {% else %}
                 <li class="other">
-                    <div class="avatar"><img src=""/></div>
+                    <div class="avatar"><img src="{{ other_user['profile_image'] }}"/></div>
                     <div class="msg">
                         <p>{{ message[1] }}</p>
                         <time>{{ message[2] }}</time>
@@ -37,14 +37,14 @@
         <input class="form-control textarea" type="text" id="messageText" autocomplete="off"/>
     </form>
     <script>
-        let ws = new WebSocket(`ws://localhost:8002/chat/ws`);
+        let ws = new WebSocket(`ws://localhost:8000/chat/ws`);
 
         ws.onmessage = function (event) {                // Добавление нового сообщения в чат
             var messages = document.getElementById('messages');
             var data = JSON.parse(event.data);
             var message = document.createElement('li');
 
-            if (data.userId === {{ user.id }}) {
+            if (data.userId === {{ self_user.id }}) {
                 message.classList.add('self');
                 message.innerHTML = `
                     <div class="avatar"><img src="{{ profile_image }}"/></div>
@@ -55,7 +55,7 @@
             } else {
                 message.classList.add('other');
                 message.innerHTML = `
-                    <div class="avatar"><img src=""/></div>
+                    <div class="avatar"><img src="{{ other_user['profile_image'] }}"/></div>
                     <div class="msg">
                         <p>${data.message}</p>
                         <time>${data.date}</time>
@@ -73,8 +73,9 @@
             let input = document.getElementById("messageText");
 
             const messageData = {
-                userId: {{ user.id }},
+                userId: {{ self_user.id }},
                 message: input.value,
+                dialogue_id: {{ dialogue_id }}
             };
 
             ws.send(JSON.stringify(messageData));
@@ -96,7 +97,7 @@
                     if (data.length > 0) {
                         data.forEach(message => {
                             var listItem = document.createElement('li');
-                            if (message[0] === {{ user.id }}) {
+                            if (message[0] === {{ self_user.id }}) {
                                 listItem.classList.add('self');
                                 listItem.innerHTML = `
                                 <div class="avatar"><img src="{{ profile_image }}"/></div>
@@ -107,7 +108,7 @@
                             } else {
                                 listItem.classList.add('other');
                                 listItem.innerHTML = `
-                                <div class="avatar"><img src=""/></div>
+                                <div class="avatar"><img src="{{ other_user['profile_image'] }}"/></div>
                                 <div class="msg">
                                     <p>${message[1]}</p>
                                     <time>${message[2]}</time>
