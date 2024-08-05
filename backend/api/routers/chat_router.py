@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from session import get_database_connection
 
-router = APIRouter(
+chat_router = APIRouter(
     prefix="/chat",
     tags=["Chat"]
 )
@@ -33,7 +33,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@router.websocket("/ws")
+@chat_router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
@@ -60,7 +60,7 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-@router.get("/load_messages")
+@chat_router.get("/load_messages")
 async def load_messages(offset: int = 30, limit: int = 30):
     try:
         with get_database_connection() as conn:
@@ -69,6 +69,8 @@ async def load_messages(offset: int = 30, limit: int = 30):
                     "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages ORDER BY id DESC LIMIT %s OFFSET %s",
                     (limit, offset))
                 result = cursor.fetchall()  # Возвращает кортеж user_id, message и date
+                if result is None:
+                    raise HTTPException(status_code=404, detail="Сообщения не найдены")
                 return result
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))

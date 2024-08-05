@@ -6,11 +6,11 @@ from email_validator import validate_email, EmailNotValidError
 from typing import Dict, Any
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
-from session import get_database_connection
+from backend.api.routers.session import get_database_connection
 from datetime import date, datetime, timedelta
 from jose import JWTError, jwt
 
-router = APIRouter(prefix='', tags=['Authorization'])
+authorization_router = APIRouter(prefix='', tags=['Authorization'])
 
 
 SECRET_KEY = "secret"
@@ -64,7 +64,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-@router.post('/register', status_code=status.HTTP_200_OK)
+@authorization_router.post('/register', status_code=status.HTTP_200_OK)
 def register(user: UserCreate) -> Dict[str, str]:
     email = user.email
     password = user.password
@@ -113,7 +113,7 @@ def register(user: UserCreate) -> Dict[str, str]:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 
-@router.get('/get_current_user')
+@authorization_router.get('/get_current_user')
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -157,7 +157,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         )
 
 
-@router.post('/login', response_model=dict)
+@authorization_router.post('/login', response_model=dict)
 def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
     email = form_data.username
     password = form_data.password
@@ -192,12 +192,12 @@ def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()):
         )
 
 
-@router.get("/user/me", response_model=User)
+@authorization_router.get("/user/me", response_model=User)
 def read_user_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-@router.get("/user/me/dict")
+@authorization_router.get("/user/me/dict")
 def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     return current_user.dict()
 

@@ -3,13 +3,13 @@ import imghdr
 import io
 
 from fastapi.templating import Jinja2Templates
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, RedirectResponse
 from session import get_database_connection
 from fastapi import HTTPException, Request, APIRouter
 import requests
 
-router = APIRouter(
-    prefix="",
+pages_router = APIRouter(
+    prefix="/pages",
     tags=["Pages"]
 )
 
@@ -23,15 +23,19 @@ def get_response(access_token):
         "Content-Type": "application/json",
     }
     response = requests.get(url=url, headers=headers)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Не удалось получить информацию о пользователе.")
     return response
 
 
-def get_user_info_by_id(id):
+def get_user_info_by_id(id: int):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT name FROM users WHERE id = %s", (id,))
                 name = cursor.fetchone()[0]
+                if name is None:
+                    raise HTTPException(status_code=404, detail="Имя пользователя не найдено")
 
                 profile_image = get_profile_image(id)
 
@@ -40,12 +44,14 @@ def get_user_info_by_id(id):
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-def get_profile_image(id):
+def get_profile_image(id: int):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT image FROM users_images WHERE user_id = %s AND is_profile_image = TRUE", (id,))
                 profile_image_data = cursor.fetchone()
+                if profile_image_data is None:
+                    raise HTTPException(status_code=404, detail="Фото профиля не найдено")
 
                 profile_image_bytes = profile_image_data[
                     0]  # Преобразование двоичного кода изображения в b64 и передача url
@@ -58,23 +64,30 @@ def get_profile_image(id):
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@router.get("/dialogues/{dialogue_id}", name='chat')  # Страница чата
+@pages_router.get("/dialogues/{dialogue_id}", name='chat')  # Страница чата
 def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: int = 30):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
+                access_token = request.cookies.get("access_token")
+                if not access_token:
+                    return RedirectResponse('/login')
+                self_user = get_response(
+                    access_token).json()  # Получение информации об авторизованном юзере через access_token
+
                 cursor.execute(
                     "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages WHERE dialogue_id = %s ORDER BY id DESC LIMIT %s OFFSET %s",
                     (dialogue_id, limit, offset))
                 limited_result = cursor.fetchall()  # Возвращает кортеж user_id, message и date
+                if limited_result is None:
+                    raise HTTPException(status_code=404, detail="Сообщения не найдены.")
 
                 cursor.execute("SELECT message FROM messages")
                 full_result = cursor.fetchall()
+                if full_result is None:
+                    raise HTTPException(status_code=404, detail="Сообщения не найдены.")
                 full_result_len = len(full_result)  # Возвращает кол-во всех сообщений
 
-                access_token = request.cookies.get("access_token")
-                self_user = get_response(
-                    access_token).json()  # Получение информации об авторизованном юзере через access_token
                 profile_image = get_profile_image(self_user['id'])
 
                 cursor.execute("""
@@ -90,9 +103,11 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
                                 """,
                                (self_user['id'], self_user['id'], dialogue_id))  # Возвращает id другого пользователя
                 other_user_id = cursor.fetchone()[0]
+                if other_user_id is None:
+                    raise HTTPException(status_code=404, detail="ID пользователя не найден.")
                 other_user = get_user_info_by_id(other_user_id)  # Возвращает имя и фото другого пользователя
 
-                return templates.TemplateResponse("index.html", {"request": request,
+                return templates.TemplateResponse("chat.html", {"request": request,
                                                                  "limited_result": limited_result,
                                                                  "full_result_len": full_result_len,
                                                                  'self_user': self_user,
@@ -103,18 +118,21 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@router.get("/login", response_class=HTMLResponse)
+@pages_router.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
-@router.get("/dialogues")
+@pages_router.get("/dialogues")
 def get_dialogues_page(request: Request):
     try:
         with get_database_connection() as conn:
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
+                if not access_token:
+                    return RedirectResponse('/login')
                 self_user = get_response(access_token).json()
+
                 cursor.execute("""
                                     SELECT 
                                         id AS dialogue_id,
@@ -128,6 +146,8 @@ def get_dialogues_page(request: Request):
                                         user1_id = %s OR user2_id = %s
                                 """, (self_user['id'], self_user['id'], self_user['id'], self_user['id']))
                 dialogues = cursor.fetchall()  # Возвращает id диалога и id всех собеседников пользователя
+                if dialogues is None:
+                    raise HTTPException(status_code=404, detail="Диалог или ID пользователя не найдены")
 
                 other_user = []
                 for dialogue in dialogues:

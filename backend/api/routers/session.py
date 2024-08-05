@@ -1,5 +1,5 @@
 import psycopg2
-from config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_DATABASE, POSTGRES_PORT
+from backend.api.config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_DATABASE, POSTGRES_PORT
 
 
 def get_database_connection():
