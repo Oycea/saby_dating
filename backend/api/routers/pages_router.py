@@ -4,33 +4,32 @@ import io
 
 from fastapi.templating import Jinja2Templates
 from starlette.responses import HTMLResponse, RedirectResponse
-from session import get_database_connection
+from backend.api.routers.session import open_conn
 from fastapi import HTTPException, Request, APIRouter
 import requests
 
 pages_router = APIRouter(
-    prefix="/pages",
+    prefix="",
     tags=["Pages"]
 )
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="frontend/templates")
 
 
 def get_response(access_token):
-    url = "http://127.0.0.1:8000/get_current_user"
+    url = "http://127.0.0.1:8002/get_current_user"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
     response = requests.get(url=url, headers=headers)
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Не удалось получить информацию о пользователе.")
+
     return response
 
 
 def get_user_info_by_id(id: int):
     try:
-        with get_database_connection() as conn:
+        with open_conn() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT name FROM users WHERE id = %s", (id,))
                 name = cursor.fetchone()[0]
@@ -46,7 +45,7 @@ def get_user_info_by_id(id: int):
 
 def get_profile_image(id: int):
     try:
-        with get_database_connection() as conn:
+        with open_conn() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("SELECT image FROM users_images WHERE user_id = %s AND is_profile_image = TRUE", (id,))
                 profile_image_data = cursor.fetchone()
@@ -67,7 +66,7 @@ def get_profile_image(id: int):
 @pages_router.get("/dialogues/{dialogue_id}", name='chat')  # Страница чата
 def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: int = 30):
     try:
-        with get_database_connection() as conn:
+        with open_conn() as conn:
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
@@ -120,13 +119,13 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
 
 @pages_router.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
 @pages_router.get("/dialogues")
 def get_dialogues_page(request: Request):
     try:
-        with get_database_connection() as conn:
+        with open_conn() as conn:
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:

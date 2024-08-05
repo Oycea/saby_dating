@@ -8,3 +8,7 @@ email_validator
 typing
 websockets
 Jinja2
+base64
+imghdr
+requests
+json

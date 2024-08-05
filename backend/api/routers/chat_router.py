@@ -1,7 +1,7 @@
 import datetime
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-from session import get_database_connection
+from backend.api.routers.session import open_conn
 
 chat_router = APIRouter(
     prefix="/chat",
@@ -46,7 +46,7 @@ async def websocket_endpoint(websocket: WebSocket):
             date = datetime.datetime.now().strftime("%H:%M")
 
             try:
-                with get_database_connection() as conn:
+                with open_conn() as conn:
                     with conn.cursor() as cursor:
                         cursor.execute(
                             "INSERT INTO messages(user_id, message, date, dialogue_id) VALUES(%s, %s, %s, %s)",
@@ -63,7 +63,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @chat_router.get("/load_messages")
 async def load_messages(offset: int = 30, limit: int = 30):
     try:
-        with get_database_connection() as conn:
+        with open_conn() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages ORDER BY id DESC LIMIT %s OFFSET %s",

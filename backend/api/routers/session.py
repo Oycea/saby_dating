@@ -1,12 +1,22 @@
 import psycopg2
-from backend.api.config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_DATABASE, POSTGRES_PORT
+import psycopg2.extras
+import logging
+
+from backend.api.config import POSTGRES_NAME, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT
+
+logger = logging.getLogger(__name__)
 
 
-def get_database_connection():
+def open_conn():
     try:
-        conn = psycopg2.connect(user=POSTGRES_USER, password=POSTGRES_PASSWORD,
-                                database=POSTGRES_DATABASE, host=POSTGRES_HOST, port=POSTGRES_PORT)
-        print('Connection opened')
-        return conn
-    except:
-        print('Can`t establish connection to database')
+        connection = psycopg2.connect(
+            dbname=POSTGRES_NAME,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT
+        )
+        return connection
+    except psycopg2.Error as e:
+        logger.error(f"Can't establish connection to database: {e}")
+        raise e
