@@ -28,6 +28,7 @@ class User(BaseModel):
     target_id: int
     communication_id: int
     biography: Optional[str] = None
+    profile_image: Optional[str] = None
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login/")
@@ -95,6 +96,10 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                         detail="Не удалось подтвердить данные",
                         headers={"WWW-Authenticate": "Basic"},
                     )
+                cursor.execute("SELECT id FROM users_images WHERE user_id = %s AND is_profile_image = TRUE",
+                               (user_data[0],))
+                profile_image = cursor.fetchone()
+
                 user = User(
                     id=user_data[0],
                     email=user_data[1],
@@ -106,7 +111,8 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                     gender_id=user_data[7],
                     target_id=user_data[8],
                     communication_id=user_data[9],
-                    biography=user_data[10]
+                    biography=user_data[10],
+                    profile_image=f"/photos/profile_photo/?user_id={user_data[0]}" if profile_image else None
                 )
                 return user
     except JWTError:

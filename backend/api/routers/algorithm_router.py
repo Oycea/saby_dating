@@ -9,7 +9,6 @@ from psycopg2.extras import RealDictCursor
 algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
 
-
 @algorithm_router.get('/get_all_users/', name='Get all users')
 def get_all_users() -> list[dict]:
     try:
@@ -90,7 +89,7 @@ def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | list[
 
 
 @algorithm_router.post('/create_dislike/{user_dislike_from}/{user_dislike_to}', name='Create dislike')
-def create_like(user_dislike_from: int, user_dislike_to: int) -> dict[str, int | list[int]]:
+def create_dislike(user_dislike_from: int, user_dislike_to: int) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -194,12 +193,12 @@ def list_questionnaires(user_id_var: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_filters/{user_id}',  name="create filters for user")
+@algorithm_router.post('/create_filters/{user_id}', name="create filters for user")
 def create_filters(user_id: int, age_min: Optional[int] = None, age_max: Optional[int] = None,
                    height_min: Optional[int] = None, height_max: Optional[int] = None,
                    communication_id: Optional[int] = None, target_id: Optional[int] = None,
                    gender_id: Optional[int] = None, city: Optional[str] = None,
-                   interests: Optional[list[int]] = []) -> dict[str,int]:
+                   interests: Optional[list[int]] = []) -> dict[str, int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -214,3 +213,46 @@ def create_filters(user_id: int, age_min: Optional[int] = None, age_max: Optiona
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
+
+@algorithm_router.patch('/patch_filters/{user_id}', name="patch filters for users search")
+def patch_filters(user_id: int, age_min: Optional[int] = None, age_max: Optional[int] = None,
+                  height_min: Optional[int] = None, height_max: Optional[int] = None,
+                  communication_id: Optional[int] = None, target_id: Optional[int] = None,
+                  gender_id: Optional[int] = None, city: Optional[str] = None,
+                  interests: Optional[list[int]] = []) -> dict[str, int]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT * FROM filters WHERE user_id = %s ", (user_id,))
+                search_filters = cursor.fetchone()
+                if not search_filters:
+                    raise HTTPException(status_code=404, detail="no filters were found for this user")
+                new_filters = {
+                    "user id": search_filters[0],
+                    "age min": age_min or search_filters[1],
+                    "age max": age_max or search_filters[2],
+                    "height min": height_min or search_filters[3],
+                    "height max": height_max or search_filters[4],
+                    "communication id": communication_id or search_filters[5],
+                    "target id": target_id or search_filters[6],
+                    "gender id": gender_id or search_filters[7],
+                    "city": city or search_filters[8]
+                }
+                print(new_filters)
+                up_filters = ("UPDATE filters "
+                              "SET user_id = %s, age_min = %s, age_max = %s, height_min = %s, height_max = %s, "
+                              "communication_id = %s, "
+                              "target_id = %s, gender_id = %s, city = %s "
+                              "WHERE user_id = %s ")
+                vars_filters = (
+                    new_filters["user id"], new_filters["age min"], new_filters["age max"], new_filters["height min"],
+                    new_filters["height max"], new_filters["communication id"], new_filters["target id"],
+                    new_filters["gender id"], new_filters["city"], user_id,)
+                cursor.execute(up_filters, vars_filters)
+                if interests:
+                    cursor.execute("DELETE FROM filters_interests WHERE user_id = %s ", (user_id,))
+                    for key in interests:
+                        cursor.execute("INSERT INTO filters_interests VALUES(%s, %s)", (user_id, key))
+                return {"filters have been successfully updated for the user with the index": user_id}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))

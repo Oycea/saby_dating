@@ -6,6 +6,7 @@ from routers.channel_router import channel_router
 from routers.algorithm_router import algorithm_router
 from routers.authorization_router import authorization_router
 from routers.pass_reset_routers import router as pass_reset_router
+from routers.photos_router import photos_router
 
 origins = [
     "http://localhost.tiangolo.com",
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     new_app.include_router(event_router)
     new_app.include_router(channel_router)
     new_app.include_router(pass_reset_router)
+    new_app.include_router(photos_router)
 
     return new_app
 
