@@ -32,7 +32,6 @@ log_file_path = os.path.join(log_directory, 'app.log')
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
 
-
 # Настройка логгера
 logging.basicConfig(
     filename=log_file_path,
@@ -57,8 +56,9 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Headers", "Access-Control-Allow-Origin",
+                       "Authorization"],
     )
 
     new_app.include_router(authorization_router)
