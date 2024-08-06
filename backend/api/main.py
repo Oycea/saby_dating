@@ -12,6 +12,8 @@ from routers.algorithm_router import algorithm_router
 from routers.authorization_router import authorization_router
 from routers.pass_reset_router import pass_reset_router
 from routers.photos_router import photos_router
+from routers.chat_router import chat_router
+from routers.pages_router import pages_router
 
 origins = [
     "http://localhost",
@@ -68,6 +70,8 @@ def create_app() -> FastAPI:
     new_app.include_router(channel_router)
     new_app.include_router(pass_reset_router)
     new_app.include_router(photos_router)
+    new_app.include_router(chat_router)
+    new_app.include_router(pages_router)
 
     return new_app
 
