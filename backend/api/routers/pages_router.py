@@ -121,7 +121,7 @@ async def login(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@pages_router.get("/dialogues")
+@pages_router.get("/dialogues", name="dialogues")
 def get_dialogues_page(request: Request):
     try:
         with open_conn() as conn:
