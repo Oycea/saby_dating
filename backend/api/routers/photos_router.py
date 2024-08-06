@@ -153,4 +153,3 @@ def delete_photo(photo_id: int, current_user: User = Depends(get_current_user)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
-    

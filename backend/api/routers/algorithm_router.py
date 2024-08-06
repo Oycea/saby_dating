@@ -1,10 +1,12 @@
+from datetime import datetime
 from typing import Optional
 
 import psycopg2
-from fastapi import HTTPException, APIRouter
-from pydantic import BaseModel
+from fastapi import HTTPException, APIRouter, Depends
 from routers.session import open_conn
 from psycopg2.extras import RealDictCursor
+from routers.authorization_router import User, get_current_user
+
 
 algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
@@ -24,10 +26,11 @@ def get_all_users() -> list[dict]:
 
 
 @algorithm_router.get('/get_likes/{user_id}', name='Get likes from user by user_id')
-def get_likes(user_id: int) -> list[int]:
+def get_likes(current_user: User = Depends(get_current_user)) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id = current_user.id
                 cursor.execute("SELECT user_id_to FROM likes WHERE user_id_from=%s", (user_id,))
                 likes = cursor.fetchall()
                 if not likes:
@@ -38,11 +41,12 @@ def get_likes(user_id: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/get_dislikes/{user_id}', name='Get dislikes from user by user_id')
-def get_dislikes(user_id: int) -> list[int]:
+@algorithm_router.get('/get_dislikes/', name='Get dislikes from user by user_id')
+def get_dislikes(current_user: User = Depends(get_current_user)) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id = current_user.id
                 cursor.execute("SELECT user_id_to FROM dislikes WHERE user_id_from=%s", (user_id,))
                 dislikes = cursor.fetchall()
                 if not dislikes:
@@ -53,11 +57,12 @@ def get_dislikes(user_id: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/find_matches/{user_id}', name='Find matches for user by user_id')
-def find_matches(user_id: int) -> list[int]:
+@algorithm_router.get('/find_matches/', name='Find matches for user by user_id')
+def find_matches(current_user: User = Depends(get_current_user)) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id = current_user.id
                 cursor.execute(
                     "SELECT user_id_to FROM likes WHERE user_id_to IN (SELECT user_id_from FROM likes WHERE "
                     "user_id_to=%s)",
@@ -71,11 +76,12 @@ def find_matches(user_id: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_like/{user_like_from}/{user_like_to}', name='Create like')
-def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | list[int]]:
+@algorithm_router.post('/create_like/{user_like_to}', name='Create like')
+def create_like(user_like_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_like_from = current_user.id
                 cursor.execute("INSERT INTO likes (user_id_from, user_id_to) VALUES(%s, %s) RETURNING *",
                                (user_like_from, user_like_to))
                 new_likes = cursor.fetchone()
@@ -88,11 +94,12 @@ def create_like(user_like_from: int, user_like_to: int) -> dict[str, int | list[
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_dislike/{user_dislike_from}/{user_dislike_to}', name='Create dislike')
-def create_dislike(user_dislike_from: int, user_dislike_to: int) -> dict[str, int | list[int]]:
+@algorithm_router.post('/create_dislike/{user_dislike_to}', name='Create dislike')
+def create_dislike(user_dislike_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_dislike_from = current_user.id
                 cursor.execute("INSERT INTO dislikes (user_id_from, user_id_to) VALUES(%s, %s) RETURNING *",
                                (user_dislike_from, user_dislike_to))
                 new_dislikes = cursor.fetchone()
@@ -127,11 +134,12 @@ def delete_all_dislikes() -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/list_questionnaires/{user_id}', name='list of assessment questionnaires')
-def list_questionnaires(user_id_var: int) -> list[int]:
+@algorithm_router.get('/list_questionnaires/', name='list of assessment questionnaires')
+def list_questionnaires(current_user: User = Depends(get_current_user)) -> list[int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id_var = current_user.id
                 first_request = ("WITH tmp_interests AS( "
                                  "SELECT ui.user_id as id FROM "
                                  "( "
@@ -193,15 +201,17 @@ def list_questionnaires(user_id_var: int) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_filters/{user_id}', name="create filters for user")
-def create_filters(user_id: int, age_min: Optional[int] = None, age_max: Optional[int] = None,
+@algorithm_router.post('/create_filters/', name="create filters for user")
+def create_filters(age_min: Optional[int] = None, age_max: Optional[int] = None,
                    height_min: Optional[int] = None, height_max: Optional[int] = None,
                    communication_id: Optional[int] = None, target_id: Optional[int] = None,
                    gender_id: Optional[int] = None, city: Optional[str] = None,
-                   interests: Optional[list[int]] = []) -> dict[str, int]:
+                   interests: Optional[list[int]] = [],
+                   current_user: User = Depends(get_current_user)) -> dict[str, int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id = current_user.id
                 filters_ins = ("INSERT INTO filters "
                                "VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s)")
                 filt_vars = (user_id, age_min, age_max, height_min, height_max, communication_id, target_id,
@@ -214,15 +224,17 @@ def create_filters(user_id: int, age_min: Optional[int] = None, age_max: Optiona
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.patch('/patch_filters/{user_id}', name="patch filters for users search")
-def patch_filters(user_id: int, age_min: Optional[int] = None, age_max: Optional[int] = None,
+@algorithm_router.patch('/patch_filters/', name="patch filters for users search")
+def patch_filters(age_min: Optional[int] = None, age_max: Optional[int] = None,
                   height_min: Optional[int] = None, height_max: Optional[int] = None,
                   communication_id: Optional[int] = None, target_id: Optional[int] = None,
                   gender_id: Optional[int] = None, city: Optional[str] = None,
-                  interests: Optional[list[int]] = []) -> dict[str, int]:
+                  interests: Optional[list[int]] = [],
+                  current_user: User = Depends(get_current_user)) -> dict[str, int]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id = current_user.id
                 cursor.execute("SELECT * FROM filters WHERE user_id = %s ", (user_id,))
                 search_filters = cursor.fetchone()
                 if not search_filters:
@@ -256,3 +268,13 @@ def patch_filters(user_id: int, age_min: Optional[int] = None, age_max: Optional
                 return {"filters have been successfully updated for the user with the index": user_id}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
+
+
+# @algorithm_router.get('/search_events/', name="search events to filters")
+# def search_events(title:str, place:str, is_online:bool, date_time: datetime, tags:list[int]) -> dict[str, list[list]]:
+#     try:
+#         with open_conn() as connection:
+#             with connection.cursor() as cursor:
+#                 for key in tags:
+
+

@@ -13,7 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from routers.session import open_conn
 
-authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
+authorization_router = APIRouter(prefix='', tags=['Authorization'])
 
 
 class User(BaseModel):
@@ -31,7 +31,7 @@ class User(BaseModel):
     profile_image: Optional[str] = None
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login/")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 app = FastAPI()
 
 
@@ -73,6 +73,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     return encoded_jwt
 
 
+@authorization_router.get('/get_current_user')
 def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
     try:
         payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -181,8 +182,8 @@ def register(email: EmailStr, password: str, name: str, city: str,
         )
 
 
-@authorization_router.post('/login/', response_model=Dict[str, str], name='Вход в систему')
-def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
+@authorization_router.post('/login', response_model=Dict[str, str], name='Вход в систему')
+def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
     email = form_data.username
     password = form_data.password
 
@@ -207,6 +208,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
                     )
 
                 access_token = create_access_token(data={"sub": email})
+                response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True)
                 return {"access_token": access_token, "token_type": "bearer"}
     except Exception as ex:
         raise HTTPException(
