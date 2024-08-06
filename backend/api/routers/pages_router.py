@@ -1,9 +1,10 @@
 import base64
 import imghdr
 import io
+import os
 from fastapi.templating import Jinja2Templates
 from starlette.responses import HTMLResponse, RedirectResponse
-from backend.api.routers.session import open_conn
+from routers.session import open_conn
 from fastapi import HTTPException, Request, APIRouter
 import requests
 
@@ -12,7 +13,10 @@ pages_router = APIRouter(
     tags=["Pages"]
 )
 
-templates = Jinja2Templates(directory="frontend/templates")
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+templates_dir = os.path.join(project_root, 'frontend', 'templates')
+templates = Jinja2Templates(directory=templates_dir)
 
 
 def get_response(access_token):
@@ -69,7 +73,7 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
-                    return RedirectResponse('')
+                    return RedirectResponse('/login')
                 self_user = get_response(
                     access_token).json()  # Получение информации об авторизованном юзере через access_token
 
@@ -116,7 +120,7 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@pages_router.get("", response_class=HTMLResponse)
+@pages_router.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -128,7 +132,7 @@ def get_dialogues_page(request: Request):
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
-                    return RedirectResponse('')
+                    return RedirectResponse('/login')
                 self_user = get_response(access_token).json()
 
                 cursor.execute("""

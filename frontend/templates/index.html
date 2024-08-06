@@ -43,7 +43,6 @@
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    const proxyUrl = 'https://api.allorigins.win/raw?url=';
     const url = 'http://195.133.201.168:8000/login';
     const formData = new URLSearchParams();
     formData.append('grant_type', 'password');
@@ -53,7 +52,7 @@
     formData.append('client_id', 'string');
     formData.append('client_secret', 'string');
 
-    fetch(proxyUrl + url, {
+    fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

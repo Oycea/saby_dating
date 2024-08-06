@@ -1,7 +1,7 @@
 import datetime
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-from backend.api.routers.session import open_conn
+from routers.session import open_conn
 
 chat_router = APIRouter(
     prefix="/chat",

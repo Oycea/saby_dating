@@ -13,7 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from routers.session import open_conn
 
-authorization_router = APIRouter(prefix='', tags=['Authorization'])
+authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
 
 
 class User(BaseModel):
