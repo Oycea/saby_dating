@@ -1,7 +1,6 @@
 import base64
 import imghdr
 import io
-
 from fastapi.templating import Jinja2Templates
 from starlette.responses import HTMLResponse, RedirectResponse
 from backend.api.routers.session import open_conn
@@ -17,7 +16,7 @@ templates = Jinja2Templates(directory="frontend/templates")
 
 
 def get_response(access_token):
-    url = "http://127.0.0.1:8002/get_current_user"
+    url = "http://195.133.201.168:80/get_current_user"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
@@ -70,7 +69,7 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
-                    return RedirectResponse('/login')
+                    return RedirectResponse('')
                 self_user = get_response(
                     access_token).json()  # Получение информации об авторизованном юзере через access_token
 
@@ -117,9 +116,9 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@pages_router.get("/login", response_class=HTMLResponse)
+@pages_router.get("", response_class=HTMLResponse)
 async def login(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @pages_router.get("/dialogues")
@@ -129,7 +128,7 @@ def get_dialogues_page(request: Request):
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
-                    return RedirectResponse('/login')
+                    return RedirectResponse('')
                 self_user = get_response(access_token).json()
 
                 cursor.execute("""

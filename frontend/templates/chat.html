@@ -37,7 +37,7 @@
         <input class="form-control textarea" type="text" id="messageText" autocomplete="off"/>
     </form>
     <script>
-        let ws = new WebSocket(`ws://localhost:8002/chat/ws`);
+        let ws = new WebSocket(`ws://http://195.133.201.168:80/chat/ws`);
 
         ws.onmessage = function (event) {                // Добавление нового сообщения в чат
             var messages = document.getElementById('messages');
