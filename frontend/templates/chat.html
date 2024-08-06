@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <head>
+        <title>Чат</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <link rel="stylesheet" href="{{ url_for('static', path='css/chat.css') }}">
+    </head>
+    <body>
+    <div class="menu">
+        <div class="back"><img src="{{ other_user['profile_image'] }}"/></div>
+        <div class="name">{{ other_user['name'] }}</div>
+    </div>
+    <ol id='messages' class="chat">
+        {% for message in limited_result|reverse %}
+            {% if message[0] == self_user.id %}
+                <!--Первое значение - id пользователя, которому принадлежит сообщение, второе - само сообщение, третье - дата -->
+                <li class="self">
+                    <div class="avatar"><img src="{{ profile_image }}"/></div>
+                    <div class="msg">
+                        <p>{{ message[1] }}</p>
+                        <time>{{ message[2] }}</time>
+                    </div>
+                </li>
+            {% else %}
+                <li class="other">
+                    <div class="avatar"><img src="{{ other_user['profile_image'] }}"/></div>
+                    <div class="msg">
+                        <p>{{ message[1] }}</p>
+                        <time>{{ message[2] }}</time>
+                    </div>
+                </li>
+            {% endif %}
+        {% endfor %}
+    </ol>
+    <form action="" onsubmit="sendMessage(event)">
+        <input class="form-control textarea" type="text" id="messageText" autocomplete="off"/>
+    </form>
+    <script>
+        let ws = new WebSocket(`ws://http://195.133.201.168:80/chat/ws`);
+
+        ws.onmessage = function (event) {                // Добавление нового сообщения в чат
+            var messages = document.getElementById('messages');
+            var data = JSON.parse(event.data);
+            var message = document.createElement('li');
+
+            if (data.userId === {{ self_user.id }}) {
+                message.classList.add('self');
+                message.innerHTML = `
+                    <div class="avatar"><img src="{{ profile_image }}"/></div>
+                    <div class="msg">
+                        <p>${data.message}</p>
+                        <time>${data.date}</time>
+                    </div>`;
+            } else {
+                message.classList.add('other');
+                message.innerHTML = `
+                    <div class="avatar"><img src="{{ other_user['profile_image'] }}"/></div>
+                    <div class="msg">
+                        <p>${data.message}</p>
+                        <time>${data.date}</time>
+                    </div>`;
+            }
+
+            messages.appendChild(message);
+            offset += 1;
+            window.scrollTo(0, document.body.scrollHeight);
+        };
+
+
+        function sendMessage(event) {                       // Вызов Websocket
+            event.preventDefault();
+            let input = document.getElementById("messageText");
+
+            const messageData = {
+                userId: {{ self_user.id }},
+                message: input.value,
+                dialogue_id: {{ dialogue_id }}
+            };
+
+            ws.send(JSON.stringify(messageData));
+            input.value = '';
+        }
+
+        let offset = 30; // Начальный индекс для загрузки сообщений
+        const limit = 30; // Кол-во сообщений для загрузки
+        let loadingMessages = false;
+
+        function loadMessages() { // Ленивая загрузка
+            if (loadingMessages) return;
+            loadingMessages = true;
+            $.ajax({
+                type: "GET",
+                url: "{{ url_for('load_messages')}}",
+                data: {offset: offset, limit: limit},
+                success: function (data) {
+                    if (data.length > 0) {
+                        data.forEach(message => {
+                            var listItem = document.createElement('li');
+                            if (message[0] === {{ self_user.id }}) {
+                                listItem.classList.add('self');
+                                listItem.innerHTML = `
+                                <div class="avatar"><img src="{{ profile_image }}"/></div>
+                                <div class="msg">
+                                    <p>${message[1]}</p>
+                                    <time>${message[2]}</time>
+                                </div>`;
+                            } else {
+                                listItem.classList.add('other');
+                                listItem.innerHTML = `
+                                <div class="avatar"><img src="{{ other_user['profile_image'] }}"/></div>
+                                <div class="msg">
+                                    <p>${message[1]}</p>
+                                    <time>${message[2]}</time>
+                                </div>`;
+                            }
+                            $("#messages").prepend(listItem);
+                        });
+                        offset += limit;
+                    }
+                },
+                complete: function () {
+                    loadingMessages = false;
+                }
+            });
+        }
+
+        window.addEventListener('scroll', function () {
+            if (window.scrollY <= 150 && "{{ full_result_len }}" > offset) {
+                loadMessages();
+            }
+        });
+
+        window.onload = function () {
+            setTimeout(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            }, 1);
+        };
+    </script>
+    </body>
+{% endblock %}

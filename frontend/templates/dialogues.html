@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>Диалоги</title>
+</head>
+<body>
+<div class="dialogs-page bg-white p-4 rounded shadow-sm">
+    <div class="form-header text-center mb-4">
+        <h2 class="text-primary">Диалоги</h2>
+    </div>
+    {% for dialogue in dialogues %}
+        <a href="{{ url_for("chat", dialogue_id=dialogue[0]) }}">
+            <div class="dialogs-list">
+                <ul class="list-group">
+                    <li class="list-group-item list-group-item-action">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ other_user[loop.index0]['profile_image'] }}" alt="Фото пользователя"
+                                 class="rounded-circle"
+                                 style="width: 40px; height: 40px;">
+                            <div class="ml-3">
+                                <h6 class="mb-0">{{ other_user[loop.index0]['name'] }}</h6>
+                                <span class="text-muted">Последнее сообщение: "Привет!"</span>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </a>
+    {% endfor %}
+</div>
+</body>
+</html>
