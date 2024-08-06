@@ -13,13 +13,14 @@ from routers.pass_reset_router import pass_reset_router
 from routers.photos_router import photos_router
 
 origins = [
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:8000",
     "http://localhost:80",
-    "http://195.133.201.168/*"
+    "http://195.133.201.168",
+    "http://195.133.201.168:80",
+    "http://195.133.201.168:8000",
+    "http://195.133.201.168:8080"
 ]
 
 # Определение пути к директории проекта
