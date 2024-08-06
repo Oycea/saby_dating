@@ -61,10 +61,11 @@ def send_message(email: str):
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
+            server.connect(SMTP_SERVER, SMTP_PORT)
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
     except smtplib.SMTPAuthenticationError as e:
         raise HTTPException(status_code=400, detail=f"Authentication error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return token
