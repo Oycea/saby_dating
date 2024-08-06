@@ -18,5 +18,5 @@ def open_conn():
         )
         return connection
     except psycopg2.Error as e:
-        logger.error(f"Can't establish connection to database: {e}")
+        logger.error(f"Невозможно подключиться к БД: {e}")
         raise e
