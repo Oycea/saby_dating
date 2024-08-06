@@ -6,6 +6,7 @@ from fastapi import HTTPException, APIRouter, Depends
 from psycopg2.extras import RealDictCursor
 
 from routers.session import open_conn
+from routers.authorization_router import get_current_user, User
 
 channel_router = APIRouter(prefix='/channels', tags=['Channels'])
 
@@ -60,10 +61,12 @@ def get_channel_users(channel_id: int) -> dict[str, int | list]:
 
 
 @channel_router.post('/create_new_channel/', name='Create new channel')
-def create_new_channel(title: str, creator_id: int) -> dict:
+def create_new_channel(title: str, current_user: User = Depends(get_current_user)) -> dict:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                creator_id = current_user.id
+
                 cursor.execute("INSERT INTO channels (title) VALUES (%s) RETURNING *", (title,))
                 channel = cursor.fetchone()
                 channel_id = channel[0]
@@ -81,10 +84,12 @@ def create_new_channel(title: str, creator_id: int) -> dict:
 
 @channel_router.post('/add_user_to_the_channel/{channel_id}/{user_id}',
                      name='Add user to the channel by user_id and channel_id')
-def add_user_to_the_channel(channel_id: int, user_id: int) -> dict[str, int | list]:
+def add_user_to_the_channel(channel_id: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                user_id = current_user.id
+
                 cursor.execute("INSERT INTO channels_users (channel_id, user_id) VALUES (%s, %s)",
                                (channel_id, user_id))
 
