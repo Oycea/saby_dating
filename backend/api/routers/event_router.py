@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 import psycopg2
 
 from psycopg2.extras import RealDictCursor
-from fastapi import HTTPException, APIRouter, Depends
+from fastapi import HTTPException, APIRouter, Depends, File, UploadFile
 
 from routers.session import open_conn
 from routers.authorization_router import get_current_user, User
@@ -17,7 +17,7 @@ def check_creator(event_id: int, user_id: int) -> None:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT creator_id FROM events WHERE id=%s", (event_id,))
                 creator_id = cursor.fetchone()
-                if creator_id != user_id:
+                if creator_id[0] != user_id:
                     raise HTTPException(status_code=401, detail="Could not validate credentials",
                                         headers={"WWW-Authenticate": "Bearer"})
     except Exception as ex:
@@ -25,7 +25,7 @@ def check_creator(event_id: int, user_id: int) -> None:
 
 
 @event_router.get('/get_event/{event_id}', name='Get event by event_id')
-def get_event(event_id: int) -> dict[str, Any]:
+def get_event(event_id: int) -> Dict[str, Any]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -41,7 +41,7 @@ def get_event(event_id: int) -> dict[str, Any]:
 
 
 @event_router.get('/get_future_events', name='Get events that are not expired')
-def get_future_events() -> dict[str, int | list[dict[str, Any]]]:
+def get_future_events() -> Dict[str, int | List[Dict[str, Any]]]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -57,7 +57,7 @@ def get_future_events() -> dict[str, int | list[dict[str, Any]]]:
 
 
 @event_router.get('/get_event_users/{event_id}', name='Get event users by event_id')
-def get_event_users(event_id: int) -> dict[str, int | list[int]]:
+def get_event_users(event_id: int) -> Dict[str, int | List[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -74,7 +74,7 @@ def get_event_users(event_id: int) -> dict[str, int | list[int]]:
 
 
 @event_router.get('/get_event_tags/{event_id}', name='Get event tags by event_id')
-def get_event_tags(event_id: int) -> dict[str, int | list[str]]:
+def get_event_tags(event_id: int) -> Dict[str, int | List[str]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -96,7 +96,7 @@ def get_event_tags(event_id: int) -> dict[str, int | list[str]]:
 
 
 @event_router.get('/get_event_images/{event_id}', name='Get event images by event_id')
-def get_event_images(event_id: int) -> dict[str, int | list[str]]:
+def get_event_images(event_id: int) -> Dict[str, int | List[str]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -120,9 +120,8 @@ def create_event(title: str,
                  tags: List[str],
                  date: datetime,
                  current_user: User = Depends(get_current_user),
-                 images_url: Optional[List[str]] = None,
                  users_limit: Optional[int] = None,
-                 is_online: bool = False) -> dict[str, str | dict]:
+                 is_online: bool = False) -> Dict[str, str | Dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -148,18 +147,13 @@ def create_event(title: str,
                 cursor.execute("INSERT INTO events_users (event_id, user_id) VALUES (%s, %s)",
                                (event['id'], creator_id))
 
-                if images_url:
-                    images_query = "INSERT INTO events_images (event_id, url) VALUES "
-                    images_data = [(event['id'], url) for url in images_url]
-                    cursor.executemany(images_query + "(%s, %s);", images_data)
-
                 return {'message': f'Event with id {event["id"]} created successfully', 'event info': event}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
 @event_router.post('/add_user_to_the_event/{event_id}', name='Add user to the event by event_id')
-def add_user_to_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
+def add_user_to_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, int | List[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -182,12 +176,12 @@ def add_user_to_the_event(event_id: int, current_user: User = Depends(get_curren
 
 @event_router.post('/add_tag_to_the_event/{event_id}/{tag_title}', name='Add tag to the event by event_id')
 def add_tag_to_the_event(event_id: int, tag_title: str,
-                         current_user: User = Depends(get_current_user)) -> dict[str, int | list[str]]:
+                         current_user: User = Depends(get_current_user)) -> Dict[str, int | List[str]]:
     try:
+        check_creator(event_id, current_user.id)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                check_creator(event_id, current_user.id)
-
                 # Получение id тега по его названию
                 cursor.execute("SELECT id FROM tags WHERE title=%s", (tag_title,))
                 tag_id_row = cursor.fetchone()
@@ -219,37 +213,30 @@ def add_tag_to_the_event(event_id: int, tag_title: str,
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.post('/add_image_to_the_event/{event_id}/', name='Add images to the event by event_id')
-def add_image_to_the_event(event_id: int, images_url: list[str],
-                           current_user: User = Depends(get_current_user)) -> dict[str, int | list[str]]:
+@event_router.post("/upload_event_image/{event_id}", name='Add image to the event by event_id')
+async def upload_image(event_id: int, file: UploadFile = File(...),
+                       current_user: User = Depends(get_current_user)) -> Dict[str, str]:
     try:
+        file_data = await file.read()
+        check_creator(event_id, current_user.id)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                check_creator(event_id, current_user.id)
+                cursor.execute("INSERT INTO events_images (event_id, image) VALUES (%s, %s) RETURNING id",
+                               (event_id, file_data))
 
-                if images_url:
-                    images_query = "INSERT INTO events_images (event_id, url) VALUES "
-                    images_data = [(event_id, url) for url in images_url]
-                    cursor.executemany(images_query + "(%s, %s);", images_data)
-                else:
-                    raise HTTPException(status_code=400, detail="Nothing to add")
+                image_id = cursor.fetchone()
 
-                cursor.execute("SELECT url FROM events_images WHERE event_id=%s", (event_id,))
-                event_images = cursor.fetchall()
+                if not image_id:
+                    raise HTTPException(status_code=404, detail="No images or event found")
 
-                if not event_images:
-                    raise HTTPException(status_code=404, detail="No images found for the event")
-
-                event_images = [image[0] for image in event_images]
-                return {'size': len(event_images), 'event_images': event_images}
-    except psycopg2.IntegrityError:
-        raise HTTPException(status_code=400, detail="Image already added to the event or invalid image/event ID")
+        return {"detail": f"Image with id {image_id[0]} successfully uploaded to the event {event_id}"}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
 @event_router.post('/add_tag/', name='Add tag')
-def add_tag(tag_title: str) -> dict[str, str]:
+def add_tag(tag_title: str) -> Dict[str, str]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -272,12 +259,12 @@ def edit_event_info(event_id: int,
                     date: Optional[datetime] = None,
                     users_limit: Optional[int] = None,
                     is_online: Optional[bool] = None,
-                    current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+                    current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     try:
+        check_creator(event_id, current_user.id)
+
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                check_creator(event_id, current_user.id)
-
                 cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
                 event = cursor.fetchone()
 
@@ -306,12 +293,12 @@ def edit_event_info(event_id: int,
 
 
 @event_router.delete('/delete_event/{event_id}', name='Delete event by event_id')
-def delete_event(event_id: int, current_user: User = Depends(get_current_user)) -> dict[str, str | dict]:
+def delete_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, str | Dict]:
     try:
+        check_creator(event_id, current_user.id)
+
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                check_creator(event_id, current_user.id)
-
                 cursor.execute("DELETE FROM events WHERE id=%s RETURNING *", (event_id,))
                 event = cursor.fetchone()
 
@@ -324,8 +311,8 @@ def delete_event(event_id: int, current_user: User = Depends(get_current_user)) 
 
 
 @event_router.delete('/delete_user_from_the_event/{event_id}/{user_id}',
-                     name='Delete user from the event by event id and user id')
-def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> dict[str, str]:
+                     name='Delete user from the event by event_id and user_id')
+def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, str]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -334,7 +321,7 @@ def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_c
                 cursor.execute("SELECT creator_id FROM events WHERE id=%s", (event_id,))
                 creator_id = cursor.fetchone()[0]
                 if creator_id == user_id:
-                    return {'message': f'Can not delete creator from users list'}
+                    return {'message': f'Can not delete creator from users List'}
 
                 cursor.execute("DELETE FROM events_users WHERE event_id=%s AND user_id=%s RETURNING *",
                                (event_id, user_id))
@@ -351,12 +338,12 @@ def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_c
 @event_router.delete('/delete_tag_from_the_event/{event_id}/{tag_title}',
                      name='Delete tag from the event by event_id')
 def delete_tag_from_the_event(event_id: int, tag_title: str,
-                              current_user: User = Depends(get_current_user)) -> dict[str, int | list]:
+                              current_user: User = Depends(get_current_user)) -> Dict[str, int | List]:
     try:
+        check_creator(event_id, current_user.id)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                check_creator(event_id, current_user.id)
-
                 # Получение id тега по его названию
                 cursor.execute("SELECT id FROM tags WHERE title=%s", (tag_title,))
                 tag_id_row = cursor.fetchone()
@@ -382,5 +369,26 @@ def delete_tag_from_the_event(event_id: int, tag_title: str,
                 tags = [tag[0] for tag in tags_data]
 
                 return {'size': len(tags), 'event tags': tags}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@event_router.delete('/delete_image_from_the_event/{event_id}/{image_id}',
+                     name='Delete image from the event by event_id and image_id')
+def delete_image_from_the_event(event_id: int, image_id: int,
+                                current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    try:
+        check_creator(event_id, current_user.id)
+
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM events_images WHERE id=%s AND event_id=%s RETURNING *",
+                               (image_id, event_id))
+                event_images = cursor.fetchone()
+
+                if not event_images:
+                    raise HTTPException(status_code=404, detail="Image not found in event")
+
+                return {'message': f'Image {image_id} deleted from event {event_id} successfully'}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
