@@ -10,7 +10,7 @@ pass_reset_router = APIRouter(tags=['Password reset'])
 
 current_file_path = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_file_path, '..', '..', '..'))
-template_dir = os.path.join(project_root, 'frontend/src')
+template_dir = os.path.join(project_root, 'frontend/templates')
 
 templates = Jinja2Templates(directory=template_dir)
 
