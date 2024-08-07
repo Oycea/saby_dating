@@ -1,6 +1,6 @@
 import time
 from datetime import date, datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from email_validator import validate_email, EmailNotValidError
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query, Form
@@ -16,6 +16,12 @@ from routers.session import open_conn
 authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
 
 
+class Interest(BaseModel):
+    id: int
+    subject: str
+    title: str
+
+
 class User(BaseModel):
     id: int
     email: str
@@ -27,11 +33,12 @@ class User(BaseModel):
     gender_id: int
     target_id: int
     communication_id: int
+    interests: List[Interest] = []
     biography: Optional[str] = None
     profile_image: Optional[str] = None
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login")
 app = FastAPI()
 
 
@@ -97,8 +104,17 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                         detail="Не удалось подтвердить данные",
                         headers={"WWW-Authenticate": "Basic"},
                     )
-                cursor.execute("SELECT id FROM users_images WHERE user_id = %s AND is_profile_image = TRUE",
-                               (user_data[0],))
+                cursor.execute(
+                    "SELECT i.id, i.subject, i.title FROM users_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = %s",
+                    (user_data[0],))
+                interests = [Interest(id=interest[0], subject=interest[1],
+                                      title=interest[2]) for interest in
+                             cursor.fetchall()]
+
+                cursor.execute(
+                    "SELECT id FROM users_images WHERE user_id = %s AND is_profile_image = TRUE",
+                    (user_data[0],)
+                    )
                 profile_image = cursor.fetchone()
 
                 user = User(
@@ -112,6 +128,7 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                     gender_id=user_data[7],
                     target_id=user_data[8],
                     communication_id=user_data[9],
+                    interests=interests,
                     biography=user_data[10],
                     profile_image=f"/photos/profile_photo/?user_id={user_data[0]}" if profile_image else None
                 )
@@ -135,11 +152,28 @@ def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[st
     return current_user.dict()
 
 
+@authorization_router.get('/interests/', response_model=List[Interest],
+                          name="Получение списка интересов")
+def get_interests() -> List[Interest]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, subject, title FROM interests")
+                interests = cursor.fetchall()
+                return [Interest(id=interest[0], subject=interest[1], title=interest[2]) for interest in interests]
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
 @authorization_router.post('/register/', status_code=status.HTTP_200_OK,
                            name='Регистрация нового пользователя')
 def register(email: EmailStr, password: str, name: str, city: str,
              birthday: date, position: str, height: int, gender_id: int,
-             target_id: int, communication_id: int, biography: Optional[str] = None) -> Dict[str, str]:
+             target_id: int, communication_id: int,
+             interests: Optional[List[str]] = Query(None), biography: Optional[str] = None) -> Dict[str, str]:
     try:
         # Проверка корректности email
         validated_email = validate_email(email)
@@ -168,11 +202,19 @@ def register(email: EmailStr, password: str, name: str, city: str,
                     INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, 
                     communication_id, biography)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING *
+                    RETURNING id
                     """,
                     (email, hashed_password, name, city, birthday, position,
                      height, gender_id, target_id, communication_id, biography)
                 )
+                user_id = cursor.fetchone()[0]
+
+                if interests:
+                    cursor.executemany(
+                        "INSERT INTO users_interests (user_id, interest_id) VALUES (%s, (SELECT id FROM interests WHERE title = %s))",
+                        [(user_id, interest) for interest in interests]
+                    )
+
                 access_token = create_access_token(data={"sub": email})
                 return {"access_token": access_token, "token_type": "bearer"}
     except Exception as ex:
@@ -208,12 +250,43 @@ def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) 
                     )
 
                 access_token = create_access_token(data={"sub": email})
-                response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True)
                 return {"access_token": access_token, "token_type": "bearer"}
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+@authorization_router.post('/profile/interest/', status_code=status.HTTP_200_OK,
+                           name="Добавление нового интереса для пользователя")
+def add_interest(interest_title: str, current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id FROM interests WHERE title = %s",
+                               (interest_title,))
+                new_interest = cursor.fetchone()
+                if not new_interest:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Интерес не найден"
+                    )
+                interest_id = new_interest[0]
+                cursor.execute("SELECT * FROM users_interests WHERE user_id = %s AND interest_id = %s",
+                               (current_user.id, interest_id))
+                if cursor.fetchone():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Этот интерес уже добавлен"
+                    )
+                cursor.execute("INSERT INTO users_interests(user_id, interest_id) VALUES (%s, %s)",
+                               (current_user.id, interest_id))
+                return {"detail": "Интерес добавлен"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера {str(ex)}"
         )
 
 
@@ -278,7 +351,16 @@ def update_profile(
                      current_user.id)
                 )
 
+                cursor.execute(
+                    """
+                    SELECT id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography 
+                    FROM users WHERE id = %s
+                    """,
+                    (current_user.id,))
+
                 new_info = cursor.fetchone()
+
                 if not new_info:
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -363,6 +445,27 @@ def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+@authorization_router.delete('/profile/interest/{interest_id}', status_code=status.HTTP_200_OK,
+                             name="Удаление интереса")
+def delete_interest(interest_id: int, current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM users_interests WHERE user_id = %s AND interest_id = %s",
+                               (current_user.id, interest_id))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Интерес не найден"
+                    )
+                return {"detail": "Успешное удаление"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутреннняя ошибка сервера: {str(ex)}"
         )
 
 

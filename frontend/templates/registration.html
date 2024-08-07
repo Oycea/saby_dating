@@ -90,10 +90,9 @@
                 return;
             }
 
-            const proxyUrl = 'https://api.allorigins.win/raw?url=';
             const url = `http://195.133.201.168:8000/authorization/register/?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}&birthday=${encodeURIComponent(birthday)}&position=${encodeURIComponent(position)}&height=${encodeURIComponent(height)}&gender_id=${encodeURIComponent(gender_id)}&target_id=${encodeURIComponent(target_id)}&communication_id=${encodeURIComponent(communication_id)}`;
 
-            fetch(proxyUrl + encodeURIComponent(url), {
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

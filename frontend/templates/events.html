@@ -45,10 +45,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM fully loaded and parsed');
 
-            const proxyUrl = 'https://api.allorigins.win/raw?url=';
             const targetUrl = 'http://195.133.201.168:8000/events/get_future_events';
 
-            fetch(proxyUrl + targetUrl)
+            fetch(targetUrl)
                 .then(response => {
                     console.log('Fetching data...');
                     if (!response.ok) {

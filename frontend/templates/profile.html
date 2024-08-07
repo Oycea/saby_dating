@@ -20,7 +20,7 @@
             <nav class="col-md-3">
                 <div class="list-group">
                     <a href="profile.html" class="list-group-item list-group-item-action active">Аккаунт</a>
-                    <a href="{{ url_for("dialogues") }}" class="list-group-item list-group-item-action">Диалоги</a>
+                    <a href="http://195.133.201.168:8000/dialogues" class="list-group-item list-group-item-action">Диалоги</a>
                     <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
                     <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
                 </div>
@@ -58,7 +58,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const url = 'http://195.133.201.168:8000/authorization/user/me';
-            const proxyUrl = 'https://api.allorigins.win/raw?url=';
             const accessToken = localStorage.getItem('access_token');
 
             if (!accessToken) {
@@ -67,7 +66,7 @@
                 return;
             }
 
-            fetch(url + proxyUrl, {
+            fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + accessToken,
