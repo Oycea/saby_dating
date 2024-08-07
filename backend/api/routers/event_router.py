@@ -392,7 +392,8 @@ def delete_image_from_the_event(event_id: int, image_id: int,
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
-#Функции поиска
+
+# Функции поиска
 @event_router.get('/search_events/', name="search events to filters")
 def search_events(title: Optional[str] = None, place: Optional[str] = None, is_online: Optional[bool] = None,
                   date_time: Optional[datetime] = None, tags: Optional[str] = None) -> dict[str, list[int]]:
@@ -414,7 +415,8 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                             list_events = [x for x in list_events if x in sel_events]
                     if not list_events:
                         raise HTTPException(status_code=404,
-                                            detail="Events with these parameters were not found")  # Если по тэгам никаких совпадений нет, то конец
+                                            detail="Events with these parameters were not found")
+                        # Если по тэгам никаких совпадений нет, то конец
                 if title is not None:
                     cursor.execute("SELECT id FROM events WHERE title = %s",
                                    (title,))  # Для каждого фильтра происходит поиск id ивента
@@ -424,7 +426,8 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                         list_events += events_by_title
                     else:
                         list_events = [x for x in list_events if
-                                       x in events_by_title]  # В окончательный список ивентов попадут лишь те,которые совпали с предыдущими фильтрами
+                                       x in events_by_title]
+                        # В окончательный список ивентов попадут лишь те, которые совпали с предыдущими фильтрами
                 if place is not None:
                     cursor.execute("SELECT id FROM events WHERE place = %s", (place,))
                     events_by_place = cursor.fetchall()
@@ -456,7 +459,8 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.get('/search_dialog/', name="search dialog by name")#Находит все диалоги юзера, с предоставленным именем
+@event_router.get('/search_dialog/',
+                  name="search dialog by name")  # Находит все диалоги юзера, с предоставленным именем
 def search_dialog(name_second_user: str, current_user: User = Depends(get_current_user)) -> dict[str, list[int]]:
     try:
         with open_conn() as connection:
