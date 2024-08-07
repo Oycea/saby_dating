@@ -276,13 +276,12 @@ def edit_event_info(event_id: int,
                     'description': description or event['description'],
                     'place': place or event['place'],
                     'datetime': date or event['datetime'],
-                    'creator_id': creator_id or event['creator_id'],
                     'users_limit': users_limit or event['users_limit'],
                     'is_online': is_online if is_online is not None else event['is_online']
                 }
 
                 cursor.execute(
-                    "UPDATE events SET title=%s, description=%s, place=%s, datetime=%s, creator_id=%s, "
+                    "UPDATE events SET title=%s, description=%s, place=%s, datetime=%s, "
                     "users_limit=%s, is_online=%s WHERE id=%s RETURNING *",
                     (*update_fields.values(), event_id))
                 updated_event = cursor.fetchone()
