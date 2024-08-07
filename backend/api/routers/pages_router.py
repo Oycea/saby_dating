@@ -73,7 +73,7 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
-                    return RedirectResponse('/login')
+                    return RedirectResponse('/')
                 self_user = get_response(
                     access_token).json()  # Получение информации об авторизованном юзере через access_token
 
@@ -120,7 +120,7 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@pages_router.get("/login", response_class=HTMLResponse)
+@pages_router.get("/", response_class=HTMLResponse)
 async def login(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
@@ -132,7 +132,7 @@ def get_dialogues_page(request: Request):
             with conn.cursor() as cursor:
                 access_token = request.cookies.get("access_token")
                 if not access_token:
-                    return RedirectResponse('/login')
+                    return RedirectResponse('/')
                 self_user = get_response(access_token).json()
 
                 cursor.execute("""
