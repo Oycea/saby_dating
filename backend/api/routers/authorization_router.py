@@ -38,7 +38,7 @@ class User(BaseModel):
     profile_image: Optional[str] = None
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login/")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login")
 app = FastAPI()
 
 
