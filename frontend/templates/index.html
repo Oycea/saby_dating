@@ -71,7 +71,7 @@
                 console.log('Success:', data);
 
                 // Установка access_token в cookie с помощью JavaScript
-                document.cookie = `access_token=${data.access_token}; Path=/; Secure; HttpOnly; SameSite=Strict`;
+                document.cookie = `access_token=${data.access_token}; Path=/; Secure; SameSite=Strict`;
 
                 // Перенаправление на страницу profile.html
                 window.location.href = 'profile.html';
