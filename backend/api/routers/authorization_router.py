@@ -173,7 +173,7 @@ def get_interests() -> List[Interest]:
 def register(email: EmailStr, password: str, name: str, city: str,
              birthday: date, position: str, height: int, gender_id: int,
              target_id: int, communication_id: int,
-             interests: Optional[List[str]] = [], biography: Optional[str] = None) -> Dict[str, str]:
+             interests: Optional[List[str]] = Query(None), biography: Optional[str] = None) -> Dict[str, str]:
     try:
         # Проверка корректности email
         validated_email = validate_email(email)
@@ -259,6 +259,38 @@ def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) 
         )
 
 
+@authorization_router.post('/profile/interest/', status_code=status.HTTP_200_OK,
+                           name="Добавление нового интереса для пользователя")
+def add_interest(interest_title: str, current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id FROM interests WHERE title = %s",
+                               (interest_title,))
+                new_interest = cursor.fetchone()
+                if not new_interest:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Интерес не найден"
+                    )
+                interest_id = new_interest[0]
+                cursor.execute("SELECT * FROM users_interests WHERE user_id = %s AND interest_id = %s",
+                               (current_user.id, interest_id))
+                if cursor.fetchone():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Этот интерес уже добавлен"
+                    )
+                cursor.execute("INSERT INTO users_interests(user_id, interest_id) VALUES (%s, %s)",
+                               (current_user.id, interest_id))
+                return {"detail": "Интерес добавлен"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера {str(ex)}"
+        )
+
+
 @authorization_router.patch('/profile/', response_model=User, name='Обновление профиля')
 def update_profile(
         current_user: User = Depends(get_current_user),
@@ -271,7 +303,6 @@ def update_profile(
         gender_id: Optional[int] = Query(None),
         target_id: Optional[int] = Query(None),
         communication_id: Optional[int] = Query(None),
-        interests: Optional[List[str]] = Query(None),
         biography: Optional[str] = Query(None)) -> User:
     try:
         with open_conn() as connection:
@@ -321,15 +352,6 @@ def update_profile(
                      current_user.id)
                 )
 
-                if interests is not None:
-                    cursor.execute(
-                        "DELETE FROM users_interests WHERE user_id = %s",
-                        (current_user.id,))
-                    cursor.executemany(
-                        "INSERT INTO users_interests (user_id, interest_id) VALUES (%s, (SELECT id FROM interests WHERE title = %s))",
-                        [(current_user.id, interest) for interest in interests]
-                    )
-
                 cursor.execute(
                     """
                     SELECT id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
@@ -339,12 +361,6 @@ def update_profile(
                     (current_user.id,))
 
                 new_info = cursor.fetchone()
-
-                cursor.execute(
-                    "SELECT i.id, i.subject, i.title FROM users_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = %s",
-                    (current_user.id,))
-                new_interests = [Interest(id=interest[0], subject=interest[1],
-                                          title=interest[2]) for interest in cursor.fetchall()]
 
                 if not new_info:
                     raise HTTPException(
@@ -363,8 +379,7 @@ def update_profile(
                     gender_id=new_info[7],
                     target_id=new_info[8],
                     communication_id=new_info[9],
-                    biography=new_info[10],
-                    interests=new_interests
+                    biography=new_info[10]
                 )
     except Exception as ex:
         raise HTTPException(
@@ -431,6 +446,27 @@ def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+@authorization_router.delete('/profile/interest/{interest_id}', status_code=status.HTTP_200_OK,
+                             name="Удаление интереса")
+def delete_interest(interest_id: int, current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM users_interests WHERE user_id = %s AND interest_id = %s",
+                               (current_user.id, interest_id))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Интерес не найден"
+                    )
+                return {"detail": "Успешное удаление"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутреннняя ошибка сервера: {str(ex)}"
         )
 
 
