@@ -43,7 +43,7 @@
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    const url = 'http://195.133.201.168:8000/login';
+    const url = 'http://195.133.201.168:8000/authorization/login';
     const formData = new URLSearchParams();
     formData.append('grant_type', 'password');
     formData.append('username', username);

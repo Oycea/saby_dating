@@ -58,7 +58,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const url = 'http://195.133.201.168:8000/authorization/user/me';
-            const proxyUrl = 'https://api.allorigins.win/raw?url=';
             const accessToken = localStorage.getItem('access_token');
 
             if (!accessToken) {
@@ -67,7 +66,7 @@
                 return;
             }
 
-            fetch(url + proxyUrl, {
+            fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + accessToken,
