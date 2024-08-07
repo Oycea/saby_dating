@@ -250,7 +250,6 @@ def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) 
                     )
 
                 access_token = create_access_token(data={"sub": email})
-                response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True)
                 return {"access_token": access_token, "token_type": "bearer"}
     except Exception as ex:
         raise HTTPException(
