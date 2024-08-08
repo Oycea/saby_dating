@@ -1,10 +1,10 @@
 import os
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 
-from utils import (create_reset_password_token, verify_reset_password_token,is_registrated,change_password,send_message)
+from utils import (verify_reset_password_token,is_registrated,change_password,send_message_pass_reset)
 
 pass_reset_router = APIRouter(tags=['Password reset'])
 
@@ -20,17 +20,17 @@ async def reset_password_form(request: Request, token: str):
     return templates.TemplateResponse("password_reset.html", {"request": request, "token": token})
 
 
-@pass_reset_router.post("/reset_password/", name='Отправить ссылку для смены пароля на почту')
-async def reset_password(email: str = Form(...)):
+@pass_reset_router.post("/reset_password_by_email/{email}", name='Отправить ссылку для смены пароля на почту')
+async def reset_password(email: str):
     if is_registrated(email):
-        token = send_message(email)
+        token = send_message_pass_reset(email)
         return token
     raise HTTPException(status_code=404, detail="Вас нет в базе данных")  #Перевести на регистрацию
 
 
 @pass_reset_router.post("/reset_password/{token}", name='Изменить пароль')
-async def process_reset_password(token: str, password: str = Form(...),
-                                 confirm_password: str = Form(...)):
+async def process_reset_password(token: str, password: str,
+                                 confirm_password: str):
     if password != confirm_password:
         raise HTTPException(status_code=400, detail="Пароли не совпадают")
     email = verify_reset_password_token(token)

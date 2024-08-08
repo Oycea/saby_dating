@@ -1,9 +1,4 @@
-import logging
-import os
-
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.event_router import event_router
@@ -14,8 +9,8 @@ from routers.pass_reset_router import pass_reset_router
 from routers.photos_router import photos_router
 from routers.chat_router import chat_router
 from routers.pages_router import pages_router
-#from utils import setup_scheduler
-#from exception_handlers import http_exception_handler
+from utils import setup_scheduler
+from exception_handlers import http_exception_handler
 
 
 origins = [
@@ -29,7 +24,8 @@ origins = [
     "http://195.133.201.168:8080"
 ]
 
-#scheduler = setup_scheduler()
+scheduler = setup_scheduler()
+
 
 def create_app() -> FastAPI:
     """
@@ -59,7 +55,7 @@ def create_app() -> FastAPI:
     new_app.include_router(photos_router)
     new_app.include_router(chat_router)
     new_app.include_router(pages_router)
-    #new_app.add_exception_handler(HTTPException, http_exception_handler)
+    new_app.add_exception_handler(HTTPException, http_exception_handler)
 
     return new_app
 
