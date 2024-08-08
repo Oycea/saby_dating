@@ -14,6 +14,9 @@ from routers.pass_reset_router import pass_reset_router
 from routers.photos_router import photos_router
 from routers.chat_router import chat_router
 from routers.pages_router import pages_router
+from utils import setup_scheduler
+from exception_handlers import http_exception_handler
+
 
 origins = [
     "http://localhost",
@@ -26,23 +29,7 @@ origins = [
     "http://195.133.201.168:8080"
 ]
 
-# Определение пути к директории проекта
-base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-log_directory = os.path.join(base_dir, 'logs')
-log_file_path = os.path.join(log_directory, 'app.log')
-
-# Создание директории, если она не существует
-if not os.path.exists(log_directory):
-    os.makedirs(log_directory)
-
-# Настройка логгера
-logging.basicConfig(
-    filename=log_file_path,
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
+scheduler = setup_scheduler()
 
 def create_app() -> FastAPI:
     """
@@ -72,17 +59,10 @@ def create_app() -> FastAPI:
     new_app.include_router(photos_router)
     new_app.include_router(chat_router)
     new_app.include_router(pages_router)
+    new_app.add_exception_handler(HTTPException, http_exception_handler)
 
     return new_app
 
 
 app = create_app()
 
-
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.error(f"HTTPException: {exc.detail} - Path: {request.url.path}")
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"message": exc.detail},
-    )
