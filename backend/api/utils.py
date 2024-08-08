@@ -83,7 +83,6 @@ def send_message(email: str):
 
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.connect(SMTP_SERVER, SMTP_PORT)
             server.starttls()
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
