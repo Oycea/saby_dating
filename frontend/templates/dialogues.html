@@ -7,8 +7,7 @@
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .container {
-            max-width: 800px;
-        / Устанавливаем максимальную ширину контейнера /
+            max-width: 800px; /* Устанавливаем максимальную ширину контейнера */
         }
     </style>
 </head>
@@ -21,7 +20,7 @@
         <nav class="col-md-3">
             <div class="list-group">
                 <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
-                <a href="dialogs.html" class="list-group-item list-group-item-action active">Диалоги</a>
+                <a href="dialogues.html" class="list-group-item list-group-item-action active">Диалоги</a>
                 <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
                 <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
             </div>
@@ -31,31 +30,69 @@
                 <div class="form-header text-center mb-4">
                     <h2 class="text-primary">Диалоги</h2>
                 </div>
-                {% for dialogue in dialogues %}
-                    <a href="{{ url_for("chat", dialogue_id=dialogue[0]) }}">
-                        <div class="dialogs-list">
-                            <ul class="list-group">
-                                <li class="list-group-item list-group-item-action">
-                                    <div class="d-flex align-items-center">
-                                        <img src="{{ other_user[loop.index0]['profile_image'] }}"
-                                             alt="Фото пользователя"
-                                             class="rounded-circle"
-                                             style="width: 40px; height: 40px;">
-                                        <div class="ml-3">
-                                            <h6 class="mb-0">{{ other_user[loop.index0]['name'] }}</h6>
-                                            <span class="text-muted">Последнее сообщение: "Привет!"</span>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </a>
-                {% endfor %}
+                <div id="dialogs-list"></div> <!-- Контейнер для динамического добавления диалогов -->
             </div>
         </main>
     </div>
 </div>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () { // Запрос к бекенду, сохранение и запись данных
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        fetch('http://195.133.201.168:8000/dialogues', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Не удалось получить данные пользователя');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const dialogues = data.dialogues;
+            const other_user = data.other_user;
+            const dialogsListDiv = document.getElementById('dialogs-list');
+
+            dialogues.forEach((dialogue, index) => {
+                const user = other_user[index];
+                const dialogLink = document.createElement('a');
+                dialogLink.href = `chat.html?dialogue_id=${dialogue[0]}`;
+                const dialogItem = document.createElement('div');
+                dialogItem.className = 'dialogs-list';
+                dialogItem.innerHTML = `
+                    <ul class="list-group">
+                        <li class="list-group-item list-group-item-action">
+                            <div class="d-flex align-items-center">
+                                <img src="${user['profile_image']}" alt="Фото пользователя" class="rounded-circle" style="width: 40px; height: 40px;">
+                                <div class="ml-3">
+                                    <h6 class="mb-0">${user['name']}</h6>
+                                    <span class="text-muted">Последнее сообщение: "Привет!"</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>`;
+                dialogLink.appendChild(dialogItem);
+                dialogsListDiv.appendChild(dialogLink);
+            });
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Не удалось загрузить информацию о пользователе');
+        });
+    });
+</script>
 </body>
 </html>
+
