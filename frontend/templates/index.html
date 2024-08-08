@@ -15,15 +15,16 @@
             <div class="form-header text-center mb-4">
                 <h2 class="text-primary">Вход</h2>
             </div>
-            <form id="login-form">
+            <form id="login-form" autocomplete="off">
                 <div class="form-group">
                     <label for="username">Имя пользователя</label>
-                    <input type="text" class="form-control" id="username" placeholder="Введите имя пользователя" required>
+                    <input type="text" class="form-control" id="username" placeholder="Введите имя пользователя" autocomplete="username" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Пароль</label>
-                    <input type="password" class="form-control" id="password" placeholder="Пароль" required>
+                    <input type="password" class="form-control" id="password" placeholder="Пароль" autocomplete="current-password" required>
                 </div>
+                <div id="error-message" class="text-danger mb-3" style="display: none;"></div>
                 <button type="submit" class="btn btn-primary btn-block">Войти</button>
             </form>
             <div class="text-center mt-3">
@@ -34,54 +35,50 @@
             </div>
         </div>
     </div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
     <script>
-        document.getElementById('login-form').addEventListener('submit', function(event) {
-    event.preventDefault();
+        document.getElementById('login-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Предотвращаем отправку формы
 
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
 
-    const url = 'http://195.133.201.168:8000/authorization/login';
-    const formData = new URLSearchParams();
-    formData.append('grant_type', 'password');
-    formData.append('username', username);
-    formData.append('password', password);
-    formData.append('scope', '');
-    formData.append('client_id', 'string');
-    formData.append('client_secret', 'string');
+            const data = new URLSearchParams();
+            data.append('grant_type', 'password');
+            data.append('username', username);
+            data.append('password', password);
+            data.append('scope', '');
+            data.append('client_id', 'string'); // Замените на ваш client_id
+            data.append('client_secret', 'string'); // Замените на ваш client_secret
 
-    fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData,
-                credentials: 'include'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
+            try {
+                const response = await fetch('http://195.133.201.168:8000/authorization/login', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: data.toString()
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Успешный вход:', result);
+
+                    localStorage.setItem('access_token', result.access_token); // Сохраняем токен в localStorage
+
+                    window.location.href = 'profile.html';
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('error-message').innerText = errorData.detail || 'Ошибка авторизации';
+                    document.getElementById('error-message').style.display = 'block';
                 }
-                return response.json();
-            })
-            .then(data => {
-                alert('Вход успешен!');
-                console.log('Success:', data);
-
-                // Установка access_token в cookie с помощью JavaScript
-                document.cookie = `access_token=${data.access_token}; Path=/; Secure; SameSite=Strict`;
-
-                // Перенаправление на страницу profile.html
-                window.location.href = 'profile.html';
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Произошла ошибка при входе');
-            });
+            } catch (error) {
+                console.error('Ошибка:', error);
+                document.getElementById('error-message').innerText = 'Сетевая ошибка. Попробуйте позже.';
+                document.getElementById('error-message').style.display = 'block';
+            }
         });
-
     </script>
 </body>
 </html>

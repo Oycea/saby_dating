@@ -8,6 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 def open_conn():
+    """
+    Открывает соединение с базой данных
+
+    :return: Соединение с БД
+    :raises: Ошибка при подключении к БД
+    """
     try:
         connection = psycopg2.connect(
             dbname=POSTGRES_NAME,

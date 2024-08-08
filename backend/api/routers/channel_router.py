@@ -13,6 +13,12 @@ channel_router = APIRouter(prefix='/channels', tags=['Channels'])
 
 @channel_router.get('/get_all_channels', name='Get all channels')
 def get_channel() -> dict[str, int | Any]:
+    """
+    Получить информацию обо всех каналах
+
+    :return: Количество каналов и информацию о них
+    :raises HTTPException: Каналы не найдены
+    """
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -29,6 +35,13 @@ def get_channel() -> dict[str, int | Any]:
 
 @channel_router.get('/get_channel/{channel_id}', name='Get channel by channel_id')
 def get_channel(channel_id: int) -> dict:
+    """
+    Получить информацию о канале по его ID
+
+    :param channel_id: ID канала
+    :return: Информацию о канале
+    :raises HTTPException: Канал не найден
+    """
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -45,6 +58,13 @@ def get_channel(channel_id: int) -> dict:
 
 @channel_router.get('/get_channel_users/{channel_id}', name='Get channel users by channel_id')
 def get_channel_users(channel_id: int) -> dict[str, int | list]:
+    """
+    Получить информацию об участниках канала
+
+    :param channel_id: ID канала
+    :return: Количество участников канала и информацию о них
+    :raises HTTPException: Канал не найден или участники канала не найдены
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -62,6 +82,14 @@ def get_channel_users(channel_id: int) -> dict[str, int | list]:
 
 @channel_router.post('/create_new_channel/', name='Create new channel')
 def create_new_channel(title: str, current_user: User = Depends(get_current_user)) -> dict:
+    """
+    Создает новый канал
+
+    :param title: Название канала
+    :param current_user: Текущий пользователь
+    :return: Информацию о канале
+    :raises HTTPException: Ошибка при создании канала
+    """
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -85,6 +113,14 @@ def create_new_channel(title: str, current_user: User = Depends(get_current_user
 @channel_router.post('/add_user_to_the_channel/{channel_id}/{user_id}',
                      name='Add user to the channel by user_id and channel_id')
 def add_user_to_the_channel(channel_id: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list]:
+    """
+    Добавляет участника канала
+
+    :param channel_id: ID канала
+    :param current_user: Текущий пользователь
+    :return: Количество участников канала и информацию о них
+    :raises HTTPException: Канал не найден или участники канала не найдены
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
