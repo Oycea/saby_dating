@@ -8,8 +8,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate, make_msgid
 from fastapi import HTTPException
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+#from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.triggers.interval import IntervalTrigger
 
 from config import (SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES,
                     SMTP_SERVER, SMTP_PORT, SMTP_PASSWORD, SMTP_USER)
@@ -95,7 +95,7 @@ def send_message(email: str):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     return token
 
-
+'''
 def setup_logging():
     # Определение пути к директории проекта
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -149,3 +149,4 @@ def setup_scheduler(log_directory=None):
         replace_existing=True
     )
     return scheduler
+'''
