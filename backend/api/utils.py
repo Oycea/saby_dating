@@ -5,8 +5,6 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formatdate, make_msgid
 from fastapi import HTTPException
 #from apscheduler.schedulers.background import BackgroundScheduler
 #from apscheduler.triggers.interval import IntervalTrigger
@@ -57,36 +55,19 @@ def change_password(email: str, password: str):
 
 def send_message(email: str):
     token = create_reset_password_token(email)
-    reset_password_url = f"http://195.133.201.168:8000/password_reset.html/{token}"
-    body_text = f"Ссылка для сброса пароля: {reset_password_url}"
-    body_html = f"""
-       <html>
-           <body>
-               <p>Ссылка для сброса пароля:<br>
-                  <a href="{reset_password_url}">{reset_password_url}</a>
-               </p>
-           </body>
-       </html>
-       """
-
-    # Создание сообщения
-    msg = MIMEMultipart('alternative')
+    reset_password_url = f"http://127.0.0.1:8000/reset-password/{token}"
+    body = f"Ссылка для сброса пароля: {reset_password_url}"
+    print(f"Ссылка для сброса пароля: {reset_password_url}")
+    msg = MIMEText(body)
+    msg['Subject'] = 'password reset'
     msg['From'] = SMTP_USER
     msg['To'] = email
-    msg['Subject'] = 'Password reset'
-    msg['Date'] = formatdate(localtime=True)
-    msg['Message-ID'] = make_msgid()
-
-    # Добавление тела сообщения
-    msg.attach(MIMEText(body_text, 'plain'))
-    msg.attach(MIMEText(body_html, 'html'))
 
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()  # Установка защищенного соединения
-            server.login(SMTP_USER, SMTP_PASSWORD)  # Авторизация
-            server.send_message(msg)  # Отправка сообщения
-            server.quit()
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
     except smtplib.SMTPAuthenticationError as e:
         raise HTTPException(status_code=400, detail=f"Authentication error: {str(e)}")
     except smtplib.SMTPException as e:
