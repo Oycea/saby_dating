@@ -24,7 +24,7 @@ def get_all_users() -> list[dict]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/get_likes/{user_id}', name='Get likes from user by user_id')
+@algorithm_router.get('/get_likes/', name='Get likes from user by user_id')
 def get_likes(current_user: User = Depends(get_current_user)) -> list[int]:
     try:
         with open_conn() as connection:
@@ -354,5 +354,26 @@ def search_dialog(name_second_user: str, current_user: User = Depends(get_curren
                 if not find_dialog:
                     raise HTTPException(status_code=404, detail="Dialog is not found")
                 return {f"the dialog was successfully found with users by name{name_second_user}": find_dialog}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@algorithm_router.get('/all_info/{user_id}', name="get all information about user")
+def all_info(user_id: int) -> dict[str, list]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT name, city, date_part('YEAR', AGE(DATE(birthday))) as age, position, height, biography,  "
+                               "(SELECT title FROM genders WHERE id = users.gender_id LIMIT 1) as gender, "
+                               "(SELECT title FROM targets WHERE id = users.target_id LIMIT 1) as target, "
+                               "(SELECT title FROM communications WHERE id = users.communication_id LIMIT 1) as communication, "
+                               "(SELECT image FROM users_images WHERE user_id = users.id LIMIT 1) as images, "
+                               "(SELECT interests.title FROM users_interests JOIN interests ON users_interests.interest_id = interests.id WHERE users_interests.user_id = users.id LIMIT 1) as interests "
+                               "FROM users WHERE id = %s", (user_id,))
+                all_info_user = cursor.fetchone()
+                print(all_info_user)
+                if not all_info_user:
+                    raise HTTPException(status_code=404, detail="User is not found")
+                return {f"Information about user with id {user_id}": all_info_user}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
