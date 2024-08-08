@@ -1,34 +1,15 @@
 import base64
 import imghdr
 import io
-import os
-from fastapi.templating import Jinja2Templates
-from starlette.responses import HTMLResponse, RedirectResponse
+import json
 from routers.session import open_conn
-from fastapi import HTTPException, Request, APIRouter, Depends
+from fastapi import HTTPException, APIRouter, Depends
 from routers.authorization_router import User, get_current_user
-import requests
 
 pages_router = APIRouter(
     prefix="",
     tags=["Pages"]
 )
-
-
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-templates_dir = os.path.join(project_root, 'frontend', 'templates')
-templates = Jinja2Templates(directory=templates_dir)
-
-
-def get_response(access_token):
-    url = "http://195.133.201.168:80/get_current_user"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-    }
-    response = requests.get(url=url, headers=headers)
-
-    return response
 
 
 def get_user_info_by_id(id: int):
@@ -67,17 +48,12 @@ def get_profile_image(id: int):
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@pages_router.get("/dialogues/{dialogue_id}", name='chat')  # Страница чата
-def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: int = 30):
+@pages_router.get("/chat", name='chat')  # Страница чата
+def get_chat_page(dialogue_id: int, offset: int = 0, limit: int = 30, current_user: User = Depends(get_current_user)):
     try:
         with open_conn() as conn:
             with conn.cursor() as cursor:
-                access_token = request.cookies.get("access_token")
-                if not access_token:
-                    return RedirectResponse('/')
-                self_user = get_response(
-                    access_token).json()  # Получение информации об авторизованном юзере через access_token
-
+                self_user = json.loads(current_user.json())  # Преобразование строки в объект
                 cursor.execute(
                     "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages WHERE dialogue_id = %s ORDER BY id DESC LIMIT %s OFFSET %s",
                     (dialogue_id, limit, offset))
@@ -110,31 +86,21 @@ def get_chat_page(dialogue_id: int, request: Request, offset: int = 0, limit: in
                     raise HTTPException(status_code=404, detail="ID пользователя не найден.")
                 other_user = get_user_info_by_id(other_user_id)  # Возвращает имя и фото другого пользователя
 
-                return templates.TemplateResponse("chat.html", {"request": request,
-                                                                 "limited_result": limited_result,
-                                                                 "full_result_len": full_result_len,
-                                                                 'self_user': self_user,
-                                                                 'profile_image': profile_image,
-                                                                 'other_user': other_user,
-                                                                 'dialogue_id': dialogue_id})
+                return {"limited_result": limited_result, "full_result_len": full_result_len, 'self_user': self_user,
+                        'profile_image': profile_image,
+                        'other_user': other_user,
+                        'dialogue_id': dialogue_id}
     except Exception as ex:
+        print(f"Error occurred: {ex}")
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@pages_router.get("/", response_class=HTMLResponse)
-async def login(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@pages_router.get("/dialogues", name="dialogues")
-def get_dialogues_page(request: Request):
+@pages_router.get("/dialogues", name="dialogues")  # Страница диалогов
+def get_dialogues_page(current_user: User = Depends(get_current_user)):
     try:
         with open_conn() as conn:
             with conn.cursor() as cursor:
-                access_token = request.cookies.get("access_token")
-                if not access_token:
-                    return RedirectResponse('/')
-                self_user = get_response(access_token).json()
+                self_user = json.loads(current_user.json())  # Преобразование строки в объект
 
                 cursor.execute("""
                                     SELECT 
@@ -147,7 +113,8 @@ def get_dialogues_page(request: Request):
                                         dialogues
                                     WHERE 
                                         user1_id = %s OR user2_id = %s
-                                """, (self_user['id'], self_user['id'], self_user['id'], self_user['id']))
+                                """,
+                               (self_user['id'], self_user['id'], self_user['id'], self_user['id']))
                 dialogues = cursor.fetchall()  # Возвращает id диалога и id всех собеседников пользователя
                 if dialogues is None:
                     raise HTTPException(status_code=404, detail="Диалог или ID пользователя не найдены")
@@ -157,9 +124,9 @@ def get_dialogues_page(request: Request):
                     user_info = get_user_info_by_id(dialogue[1])  # Получаем имя и фото всех собеседников
                     other_user += [user_info]
 
-                return templates.TemplateResponse("dialogues.html", {"request": request, "dialogues": dialogues,
-                                                                     "other_user": other_user})
+                return {"dialogues": dialogues, "other_user": other_user}
     except Exception as ex:
+        print(f"Error occurred: {ex}")
         raise HTTPException(status_code=500, detail=str(ex))
 
 
