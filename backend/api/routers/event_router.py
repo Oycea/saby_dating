@@ -419,8 +419,8 @@ def delete_event(event_id: int, current_user: User = Depends(get_current_user)) 
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.delete('/delete_user_from_the_event/{event_id}/{user_id}',
-                     name='Delete user from the event by event_id and user_id')
+@event_router.delete('/delete_user_from_the_event/{event_id}}',
+                     name='Delete user from the event by event_id')
 def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, str]:
     """
     Удаляет участника мероприятия
@@ -581,7 +581,7 @@ def search_events(title: Optional[str] = None,
                     else:
                         list_events = [x for x in list_events if
                                        x in events_by_title]
-                        # В окончательный список ивентов попадут лишь те, которые совпали с предыдущими фильтрами
+                        # В окончательный список мероприятий попадут лишь те, которые совпали с предыдущими фильтрами
                 if place is not None:
                     cursor.execute("SELECT id FROM events WHERE place = %s", (place,))
                     events_by_place = cursor.fetchall()
