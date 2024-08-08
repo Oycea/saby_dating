@@ -393,7 +393,7 @@ def delete_image_from_the_event(event_id: int, image_id: int,
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-# Функции поиска
+# Функция поиска события
 @event_router.get('/search_events/', name="search events to filters")
 def search_events(title: Optional[str] = None, place: Optional[str] = None, is_online: Optional[bool] = None,
                   date_time: Optional[datetime] = None, tags: Optional[str] = None) -> dict[str, list[int]]:
@@ -455,24 +455,5 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                 if not list_events:
                     raise HTTPException(status_code=404, detail="Events with these parameters were not found")
                 return {"List of events with these parameters": list_events}
-    except Exception as ex:
-        raise HTTPException(status_code=500, detail=str(ex))
-
-
-@event_router.get('/search_dialog/',
-                  name="search dialog by name")  # Находит все диалоги юзера, с предоставленным именем
-def search_dialog(name_second_user: str, current_user: User = Depends(get_current_user)) -> dict[str, list[int]]:
-    try:
-        with open_conn() as connection:
-            with connection.cursor() as cursor:
-                first_user_id = current_user.id
-                cursor.execute("SELECT dialogues.id "
-                               "FROM dialogues JOIN users ON dialogues.user2_id = users.id "
-                               "WHERE dialogues.user1_id = %s AND users.name = %s ", (first_user_id, name_second_user,))
-                find_dialog = cursor.fetchall()
-                find_dialog = [dialog[0] for dialog in find_dialog]
-                if not find_dialog:
-                    raise HTTPException(status_code=404, detail="Dialog is not found")
-                return {f"the dialog was successfully found with users by name{name_second_user}": find_dialog}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
