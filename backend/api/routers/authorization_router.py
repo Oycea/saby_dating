@@ -43,14 +43,36 @@ app = FastAPI()
 
 
 def get_password_hash(password: str) -> str:
+    """
+    Хэширует пароль пользователя с помощью алгоритма Argon2.
+
+    :param password: Пароль для хэширования.
+    :return: Хэшированный пароль.
+    """
     return argon2.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Проверяет совпадение заданного пароля с хэшированным.
+
+    :param plain_password: Заданный пароль (в обычном виде).
+    :param hashed_password: Хэшированный пароль.
+    :return: True при совпадении паролей, иначе False.
+    """
     return argon2.verify(plain_password, hashed_password)
 
 
 def check_password(password: str) -> None:
+    """
+    Проверяет пароль на соответствие требованиям:
+    - Пароль содержит не менее 8 символов.
+    - В пароле содержится хотя бы одна цифра.
+    - В пароле содержится хотя бы одна буква.
+
+    :param password: Проверяемый пароль.
+    :raises HTTPException: При несоответствии пароля требованиям.
+    """
     if len(password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -69,6 +91,13 @@ def check_password(password: str) -> None:
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
+    """
+    Создает JWT токен доступа.
+
+    :param data: Данные для кодирования в токене.
+    :param expires_delta: Время жизни токена. По умолчанию использует переменную окружения.
+    :return: JWT токен.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -82,6 +111,13 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
 
 @authorization_router.get('/get_current_user')
 def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
+    """
+    Получает информацию о пользователе на основе JWT токена.
+
+    :param jwt_token: JWT токен из заголовка авторизации.
+    :return: Информация о пользователе.
+    :raises HTTPException: Если токен недействителен или не удалось найти данные.
+    """
     try:
         payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
@@ -143,18 +179,36 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
 
 @authorization_router.get('/user/me', response_model=User, name='Получение пользователя по токену')
 def read_user_me(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Предоставляет информацию о пользователе на основе полученного токена.
+
+    :param current_user: Текущий пользователь, полученный и токена.
+    :return: Информация о текущем пользователе.
+    """
     return current_user
 
 
 @authorization_router.get('/user/me/dict', response_model=Dict[str, Any],
                           name='Получение пользователя в виде словаря по токену')
 def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    """
+    Предоставляет информацию о пользователе в виде словаря на основе полученного токена.
+
+    :param current_user: Текущий пользователь, полученный и токена.
+    :return: Информация о текущем пользователе в виде словаря.
+    """
     return current_user.dict()
 
 
 @authorization_router.get('/interests/', response_model=List[Interest],
                           name="Получение списка интересов")
 def get_interests() -> List[Interest]:
+    """
+    Предоставляет список интересов.
+
+    :return: Список интересов.
+    :raises HTTPException: При внутренней ошибке сервера.
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -174,6 +228,24 @@ def register(email: EmailStr, password: str, name: str, city: str,
              birthday: date, position: str, height: int, gender_id: int,
              target_id: int, communication_id: int,
              interests: Optional[List[str]] = Query(None), biography: Optional[str] = None) -> Dict[str, str]:
+    """
+    Регистрирует нового пользователя в системе.
+
+    :param email: Электронная почта пользователя.
+    :param password: Пароль пользователя.
+    :param name: Имя пользователя.
+    :param city: Город пользователя.
+    :param birthday: День рождения пользователя.
+    :param position: Должность пользователя.
+    :param height: Рост пользователя.
+    :param gender_id: Пол пользователя.
+    :param target_id: Цель общения пользователя.
+    :param communication_id: Предпочитаемый способ коммуникации пользователя.
+    :param interests: Интересы пользователя.
+    :param biography: Поле "о себе".
+    :return: Словарь, содержащий токен доступа и тип токена.
+    :raises HTTPException: В случае неверного email, некорректного пароля или внутренней ошибки сервера.
+    """
     try:
         # Проверка корректности email
         validated_email = validate_email(email)
@@ -226,6 +298,14 @@ def register(email: EmailStr, password: str, name: str, city: str,
 
 @authorization_router.post('/login', response_model=Dict[str, str], name='Вход в систему')
 def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
+    """
+    Осуществляет вход пользователя в систему и возвращает токен доступа.
+
+    :param response: HTTP-объект ответа.
+    :param form_data: Данные, содержащие имя пользователя и пароль.
+    :return: Словарь, содержащий токен доступа и тип токена.
+    :raises HTTPException: В случае неверных учетных данных, внутренней ошибке сервера.
+    """
     email = form_data.username
     password = form_data.password
 
@@ -261,6 +341,14 @@ def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) 
 @authorization_router.post('/profile/interest/', status_code=status.HTTP_200_OK,
                            name="Добавление нового интереса для пользователя")
 def add_interest(interest_title: str, current_user: User = Depends(get_current_user)):
+    """
+    Добавляет новое увлечение для текущего пользователя.
+
+    :param interest_title: Название увлечения, которое нужно добавить.
+    :param current_user: Текущий пользователь, полученный из токена.
+    :return: Словарь с сообщением о результате операции.
+    :raises HTTPException: Если увлечение не найдено, уже добавлено или возникла внутренняя ошибка сервера.
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -303,6 +391,23 @@ def update_profile(
         target_id: Optional[int] = Query(None),
         communication_id: Optional[int] = Query(None),
         biography: Optional[str] = Query(None)) -> User:
+    """
+    Обновляет поля анкеты текущего пользователя.
+
+    :param current_user: Текущий пользователь, полученый по токену.
+    :param email: Новая почта пользователя.
+    :param name: Новое имя пользователя.
+    :param city: Новый город пользователя.
+    :param birthday: Новая дата рождения пользователя.
+    :param position: Новая должность пользователя.
+    :param height: Новый рост пользователя.
+    :param gender_id: Новый идентификатор пола пользователя.
+    :param target_id: Новый идентификатор цели общения пользователя.
+    :param communication_id: Новый идентификатор предпочитаемого способа связи.
+    :param biography: Новая информация в поле "о себе" пользователя.
+    :return: Обновлённая анкета пользователя.
+    :raises HTTPException: Если пользователь не найден или возникла внутренняя ошибка сервера.
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -393,6 +498,15 @@ def change_password(
         old_password: str = Form(...),
         new_password: str = Form(...),
         current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    """
+    Изменяет пароль текущего пользователя.
+
+    :param old_password: Старый пароль, который нужно изменить.
+    :param new_password: Новый пароль.
+    :param current_user: Текущий пользователь, полученный по токену.
+    :return: Словарь с сообщением о результате операции.
+    :raises HTTPException: Если пользователь не найден, старый пароль неверен или возникла внутренняя ошибка сервера.
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -431,6 +545,13 @@ def change_password(
 @authorization_router.delete('/profile/', status_code=status.HTTP_204_NO_CONTENT,
                              name='Удаление профиля')
 def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
+    """
+    Удаляет профиль текущего пользователя.
+
+    :param current_user: Текущий пользователь, полученный по токену.
+    :return: HTTP-ответ с кодом состояния 204 (Нет содержимого).
+    :raises HTTPException: Если пользователь не найден или возникла внутренняя ошибка сервера.
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -451,6 +572,14 @@ def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
 @authorization_router.delete('/profile/interest/{interest_id}', status_code=status.HTTP_200_OK,
                              name="Удаление интереса")
 def delete_interest(interest_id: int, current_user: User = Depends(get_current_user)):
+    """
+    Удаляет увлечение у текущего пользователя.
+
+    :param interest_id: Идентификатор удаляемого увлечения.
+    :param current_user: Текущий пользователь, полученный по токену.
+    :return: Словарь с сообщением о результате операции.
+    :raises HTTPException: Если увлечение не найдено или возникла внутренняя ошибка сервера.
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -471,12 +600,26 @@ def delete_interest(interest_id: int, current_user: User = Depends(get_current_u
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_attempts: int, period: int) -> None:
+        """
+        Middleware для ограничения количества попыток входа.
+
+        :param app: Приложение.
+        :param max_attempts: Максимальное количество попыток.
+        :param period: Период ограничения попыток входа (в секундах).
+        """
         super().__init__(app)
         self.max_attempts = max_attempts
         self.period = period
         self.attempts = {}
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        """
+        Проверяет и ограничивает количество попыток входа по IP-адресу.
+
+        :param request: HTTP-запрос.
+        :param call_next: Функция для вызова следующего обработчика.
+        :return: HTTP-ответ.
+        """
         client_ip = request.client.host
         current_time = time.time()
 
