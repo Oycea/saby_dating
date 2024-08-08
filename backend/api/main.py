@@ -14,8 +14,9 @@ from routers.pass_reset_router import pass_reset_router
 from routers.photos_router import photos_router
 from routers.chat_router import chat_router
 from routers.pages_router import pages_router
-#from utils import setup_scheduler
-#from exception_handlers import http_exception_handler
+
+# from utils import setup_scheduler
+# from exception_handlers import http_exception_handler
 
 
 origins = [
@@ -29,11 +30,14 @@ origins = [
     "http://195.133.201.168:8080"
 ]
 
-#scheduler = setup_scheduler()
+
+# scheduler = setup_scheduler()
 
 def create_app() -> FastAPI:
     """
-    Create and configure an instance of the FastAPI application.
+    Создает приложение FastAPI
+
+    :return: Приложение FastAPI
     """
     new_app = FastAPI(
         title='Sabytin',
@@ -44,7 +48,7 @@ def create_app() -> FastAPI:
 
     new_app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Headers", "Access-Control-Allow-Origin",
@@ -59,10 +63,9 @@ def create_app() -> FastAPI:
     new_app.include_router(photos_router)
     new_app.include_router(chat_router)
     new_app.include_router(pages_router)
-    #new_app.add_exception_handler(HTTPException, http_exception_handler)
+    # new_app.add_exception_handler(HTTPException, http_exception_handler)
 
     return new_app
 
 
 app = create_app()
-

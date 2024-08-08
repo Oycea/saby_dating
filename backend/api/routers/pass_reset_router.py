@@ -4,7 +4,8 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 
-from utils import (create_reset_password_token, verify_reset_password_token,is_registrated,change_password,send_message)
+from utils import create_reset_password_token, verify_reset_password_token, is_registrated, change_password, \
+    send_message
 
 pass_reset_router = APIRouter(tags=['Password reset'])
 
@@ -25,7 +26,7 @@ async def reset_password(email: str = Form(...)):
     if is_registrated(email):
         token = send_message(email)
         return token
-    raise HTTPException(status_code=404, detail="Вас нет в базе данных")  #Перевести на регистрацию
+    raise HTTPException(status_code=404, detail="Вас нет в базе данных")  # Перевести на регистрацию
 
 
 @pass_reset_router.post("/reset_password/{token}", name='Изменить пароль')

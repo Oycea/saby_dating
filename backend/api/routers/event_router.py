@@ -12,6 +12,14 @@ event_router = APIRouter(prefix='/events', tags=['Events'])
 
 
 def check_creator(event_id: int, user_id: int) -> None:
+    """
+    Проверяет является ли пользователь создателем этого мероприятия
+
+    :param event_id: ID мероприятия
+    :param user_id: ID пользователя
+    :return: None
+    :raises HTTPException: Если пользователь не является создателем мероприятия
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -26,6 +34,13 @@ def check_creator(event_id: int, user_id: int) -> None:
 
 @event_router.get('/get_event/{event_id}', name='Get event by event_id')
 def get_event(event_id: int) -> Dict[str, Any]:
+    """
+    Предоставляет информацию о мероприятии по ID
+
+    :param event_id: ID мероприятия
+    :return: Информацию о мероприятии
+    :raises HTTPException: Мероприятие не найдено
+    """
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -42,6 +57,12 @@ def get_event(event_id: int) -> Dict[str, Any]:
 
 @event_router.get('/get_future_events', name='Get events that are not expired')
 def get_future_events() -> Dict[str, int | List[Dict[str, Any]]]:
+    """
+    Предоставляет информацию обо всех будущих мероприятиях и их количество
+
+    :return: Информацию обо всех будущих мероприятиях и их количество
+    :raises HTTPException: Мероприятия не найдены
+    """
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -58,6 +79,13 @@ def get_future_events() -> Dict[str, int | List[Dict[str, Any]]]:
 
 @event_router.get('/get_event_users/{event_id}', name='Get event users by event_id')
 def get_event_users(event_id: int) -> Dict[str, int | List[int]]:
+    """
+    Предоставляет количество участников мероприятия и информацию о них по ID мероприятия
+
+    :param event_id: ID мероприятия
+    :return: Количество участников мероприятия и информацию о них
+    :raises HTTPException: Мероприятие не найдено или у него отсутствуют участники
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -75,6 +103,13 @@ def get_event_users(event_id: int) -> Dict[str, int | List[int]]:
 
 @event_router.get('/get_event_tags/{event_id}', name='Get event tags by event_id')
 def get_event_tags(event_id: int) -> Dict[str, int | List[str]]:
+    """
+    Предоставляет информацию о тегах мероприятия по его ID
+
+    :param event_id: ID мероприятия
+    :return: Количество тегов и их названия
+    :raises HTTPException: Мероприятие не найдено или у него отсутствуют теги
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -95,8 +130,16 @@ def get_event_tags(event_id: int) -> Dict[str, int | List[str]]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
+# Не работает, переписать
 @event_router.get('/get_event_images/{event_id}', name='Get event images by event_id')
 def get_event_images(event_id: int) -> Dict[str, int | List[str]]:
+    """
+    Предоставляет информацию об изображениях мероприятия по его ID
+
+    :param event_id: ID мероприятия
+    :return: Количество изображений и сами изображения
+    :raises HTTPException: Мероприятие не найдено или у него отсутствуют изображения
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -104,7 +147,7 @@ def get_event_images(event_id: int) -> Dict[str, int | List[str]]:
                 images_data = cursor.fetchall()
 
                 if not images_data:
-                    raise HTTPException(status_code=404, detail="Tags or event not found")
+                    raise HTTPException(status_code=404, detail="Images or event not found")
 
                 images_urls = [images[0] for images in images_data]
 
@@ -122,6 +165,19 @@ def create_event(title: str,
                  current_user: User = Depends(get_current_user),
                  users_limit: Optional[int] = None,
                  is_online: bool = False) -> Dict[str, str | Dict]:
+    """
+    Создает новое мероприятие с заданными параметрами
+
+    :param title: Название мероприятия
+    :param description: Описание мероприятия
+    :param place: Место проведения мероприятия
+    :param tags: Теги мероприятия в виде списка
+    :param date: Дата проведения мероприятия
+    :param current_user: Текущий пользователь
+    :param users_limit: Ограничение количества участников
+    :param is_online: Онлайн или оффлайн
+    :return: Сообщение об успешном создании мероприятия и информацию о созданном мероприятии
+    """
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -154,6 +210,14 @@ def create_event(title: str,
 
 @event_router.post('/add_user_to_the_event/{event_id}', name='Add user to the event by event_id')
 def add_user_to_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, int | List[int]]:
+    """
+    Добавляет участника мероприятия
+
+    :param event_id: ID мероприятия
+    :param current_user: Текущий пользователь
+    :return: Количество участников мероприятия и список участников мероприятия
+    :raises HTTPException: Произошла ошибка при добавлении пользователя или пользователь уже является участником мероприятия или неверный ID пользователя/мероприятия
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -177,6 +241,15 @@ def add_user_to_the_event(event_id: int, current_user: User = Depends(get_curren
 @event_router.post('/add_tag_to_the_event/{event_id}/{tag_title}', name='Add tag to the event by event_id')
 def add_tag_to_the_event(event_id: int, tag_title: str,
                          current_user: User = Depends(get_current_user)) -> Dict[str, int | List[str]]:
+    """
+    Добавляет тег мероприятию
+
+    :param event_id: ID мероприятия
+    :param tag_title: Имя тега
+    :param current_user: Текущий пользователь
+    :return: Количество тегов мероприятия и список тегов мероприятия
+    :raises HTTPException: Не найден тег с таким названием или произошла ошибка при добавлении тега или тег уже есть у мероприятия или не найдено мероприятие с таким ID
+    """
     try:
         check_creator(event_id, current_user.id)
 
@@ -216,6 +289,15 @@ def add_tag_to_the_event(event_id: int, tag_title: str,
 @event_router.post("/upload_event_image/{event_id}", name='Add image to the event by event_id')
 async def upload_image(event_id: int, file: UploadFile = File(...),
                        current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    """
+    Добавляет изображение мероприятию
+
+    :param event_id: ID мероприятия
+    :param file: Файл изображения
+    :param current_user: Текущий пользователь
+    :return: Сообщение об успешном добавлении изображения
+    :raises HTTPException: Не найдено мероприятие с таким ID или произошла ошибка при добавлении изображения
+    """
     try:
         file_data = await file.read()
         check_creator(event_id, current_user.id)
@@ -237,6 +319,12 @@ async def upload_image(event_id: int, file: UploadFile = File(...),
 
 @event_router.post('/add_tag/', name='Add tag')
 def add_tag(tag_title: str) -> Dict[str, str]:
+    """
+    Создает новый тег
+
+    :param tag_title: Название тега
+    :return: Сообщение об успешном добавлении тега
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -260,6 +348,20 @@ def edit_event_info(event_id: int,
                     users_limit: Optional[int] = None,
                     is_online: Optional[bool] = None,
                     current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    """
+    Изменяет информацию о мероприятии. Все поля, кроме event_id, опциональны
+
+    :param event_id: ID мероприятия
+    :param title: Новое название мероприятия
+    :param description: Новое описание мероприятия
+    :param place: Новое место мероприятия
+    :param date: Новая дата мероприятия
+    :param users_limit: Новое ограничение количества участников мероприятия
+    :param is_online: Новое значение онлайн/оффлайн
+    :param current_user: Текущий пользователь
+    :return: Информацию об обновленном мероприятии
+    :raises HTTPException: Мероприятие не найдено
+    """
     try:
         check_creator(event_id, current_user.id)
 
@@ -293,6 +395,14 @@ def edit_event_info(event_id: int,
 
 @event_router.delete('/delete_event/{event_id}', name='Delete event by event_id')
 def delete_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, str | Dict]:
+    """
+    Удаляет мероприятие
+
+    :param event_id: ID мероприятия
+    :param current_user: Текущий пользователь
+    :return: Сообщение об успешном удалении мероприятия и информацию о нем
+    :raises HTTPException: Мероприятие не найдено
+    """
     try:
         check_creator(event_id, current_user.id)
 
@@ -312,6 +422,14 @@ def delete_event(event_id: int, current_user: User = Depends(get_current_user)) 
 @event_router.delete('/delete_user_from_the_event/{event_id}/{user_id}',
                      name='Delete user from the event by event_id and user_id')
 def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    """
+    Удаляет участника мероприятия
+
+    :param event_id: ID мероприятия
+    :param current_user: Текущий пользователь
+    :return: Сообщение об успешном удалении пользователя или сообщение о невозможности удаления создателя мероприятия
+    :raises HTTPException: Мероприятие не найдено или пользователь не является участником мероприятия
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -319,6 +437,10 @@ def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_c
 
                 cursor.execute("SELECT creator_id FROM events WHERE id=%s", (event_id,))
                 creator_id = cursor.fetchone()[0]
+
+                if not creator_id:
+                    raise HTTPException(status_code=404, detail="Event not found")
+
                 if creator_id == user_id:
                     return {'message': f'Can not delete creator from users List'}
 
@@ -338,6 +460,15 @@ def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_c
                      name='Delete tag from the event by event_id')
 def delete_tag_from_the_event(event_id: int, tag_title: str,
                               current_user: User = Depends(get_current_user)) -> Dict[str, int | List]:
+    """
+    Удаляет тег у мероприятия
+
+    :param event_id: ID мероприятия
+    :param tag_title: Название тега
+    :param current_user: Текущий пользователь
+    :return: Количество тегов и информацию о них
+    :raises HTTPException: Тег не найден или тег не найден у мероприятия или мероприятие не найдено
+    """
     try:
         check_creator(event_id, current_user.id)
 
@@ -376,6 +507,15 @@ def delete_tag_from_the_event(event_id: int, tag_title: str,
                      name='Delete image from the event by event_id and image_id')
 def delete_image_from_the_event(event_id: int, image_id: int,
                                 current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+    """
+    Удаляет изображение у мероприятия
+
+    :param event_id: ID мероприятия
+    :param image_id: ID изображения
+    :param current_user: Текущий пользователь
+    :return: Сообщение об успешном удалении изображения
+    :raises HTTPException: Изображение не найдено или мероприятие не найдено
+    """
     try:
         check_creator(event_id, current_user.id)
 
@@ -395,13 +535,27 @@ def delete_image_from_the_event(event_id: int, image_id: int,
 
 # Функция поиска события
 @event_router.get('/search_events/', name="search events to filters")
-def search_events(title: Optional[str] = None, place: Optional[str] = None, is_online: Optional[bool] = None,
-                  date_time: Optional[datetime] = None, tags: Optional[str] = None) -> dict[str, list[int]]:
+def search_events(title: Optional[str] = None,
+                  place: Optional[str] = None,
+                  is_online: Optional[bool] = None,
+                  date: Optional[datetime] = None,
+                  tags: Optional[str] = None) -> dict[str, list[int]]:
+    """
+    Поиск мероприятия по фильтрам и/или названию
+
+    :param title: Название мероприятия
+    :param place: Место проведения мероприятия
+    :param is_online: Онлайн/оффлайн
+    :param date: Дата и время проведения
+    :param tags: Теги мероприятия
+    :return: Количество мероприятий и информацию о них
+    :raises HTTPException: Мероприятия не найдены
+    """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 list_events = []
-                if tags is not None:  # Если тэги в фильтре присутствую, то они проверяются первыми
+                if tags is not None:  # Если теги в фильтре присутствую, то они проверяются первыми
                     tags = tags.split(',')
                     for key in tags:
                         cursor.execute("SELECT events.id "
@@ -416,7 +570,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                     if not list_events:
                         raise HTTPException(status_code=404,
                                             detail="Events with these parameters were not found")
-                        # Если по тэгам никаких совпадений нет, то конец
+                        # Если по тегам никаких совпадений нет, то конец
                 if title is not None:
                     cursor.execute("SELECT id FROM events WHERE title = %s",
                                    (title,))  # Для каждого фильтра происходит поиск id ивента
@@ -444,14 +598,14 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                         list_events += events_by_is_online
                     else:
                         list_events = [x for x in list_events if x in events_by_is_online]
-                if date_time is not None:
+                if date is not None:
                     cursor.execute("SELECT id FROM events WHERE datetime = %s", (title,))
-                    events_by_date_time = cursor.fetchall()
-                    events_by_date_time = [event[0] for event in events_by_date_time]
+                    events_by_date = cursor.fetchall()
+                    events_by_date = [event[0] for event in events_by_date]
                     if not list_events:
-                        list_events += events_by_date_time
+                        list_events += events_by_date
                     else:
-                        list_events = [x for x in list_events if x in events_by_date_time]
+                        list_events = [x for x in list_events if x in events_by_date]
                 if not list_events:
                     raise HTTPException(status_code=404, detail="Events with these parameters were not found")
                 return {"List of events with these parameters": list_events}
