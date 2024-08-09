@@ -569,9 +569,9 @@ def search_events(title: Optional[str] = None,
                 if tags is not None:  # Если теги в фильтре присутствую, то они проверяются первыми
                     tags = tags.split(',')
                     for key in tags:
-                        cursor.execute("SELECT events.id "
-                                       "FROM events JOIN events_tags ON events.id = events_tags.event_id "
-                                       "WHERE events_tags.tag_id = %s ", (key,))
+                        cursor.execute("SELECT event_id "
+                                       "FROM events_tags "
+                                       "WHERE tag_id = %s ", (key,))
                         sel_events = cursor.fetchall()
                         sel_events = [event[0] for event in sel_events]
                         if key == tags[0]:

@@ -44,16 +44,17 @@ async def websocket_endpoint(websocket: WebSocket):
             user_id = data_json.get("userId")
             dialogue_id = data_json.get("dialogue_id")
             date = datetime.datetime.now().strftime("%H:%M")
-
-            try:
-                with open_conn() as conn:
-                    with conn.cursor() as cursor:
-                        cursor.execute(
-                            "INSERT INTO messages(user_id, message, date, dialogue_id) VALUES(%s, %s, %s, %s)",
-                            (user_id, message, datetime.datetime.now(), dialogue_id))
-            except Exception as ex:
-                raise HTTPException(status_code=500, detail=str(ex))
-
+            if message != "":
+                try:
+                    with open_conn() as conn:
+                        with conn.cursor() as cursor:
+                            cursor.execute(
+                                "INSERT INTO messages(user_id, message, date, dialogue_id) VALUES(%s, %s, %s, %s)",
+                                (user_id, message, datetime.datetime.now(), dialogue_id))
+                except Exception as ex:
+                    raise HTTPException(status_code=500, detail=str(ex))
+            else:
+                return False
             await manager.broadcast(user_id, message, date)
 
     except WebSocketDisconnect:
@@ -61,13 +62,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 @chat_router.get("/load_messages")
-async def load_messages(offset: int = 30, limit: int = 30):
+async def load_messages(dialogue_id, offset: int = 30, limit: int = 30):
     try:
         with open_conn() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages ORDER BY id DESC LIMIT %s OFFSET %s",
-                    (limit, offset))
+                    "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages WHERE dialogue_id = %s ORDER BY id DESC LIMIT %s OFFSET %s",
+                    (dialogue_id, limit, offset))
                 result = cursor.fetchall()  # Возвращает кортеж user_id, message и date
                 if result is None:
                     raise HTTPException(status_code=404, detail="Сообщения не найдены")

@@ -131,16 +131,21 @@ def get_dialogues_page(current_user: User = Depends(get_current_user)):
 
 
 #Функция поиска диалога
-@pages_router.get('/search_dialog/', name="search dialog by name")#Находит все диалоги юзера, с предоставленным именем
+@pages_router.get('/search_dialog/', name="search dialog by name")#Добавить в pages
 def search_dialog(name_second_user: str, current_user: User = Depends(get_current_user)) -> dict[str, list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                first_user_id = current_user.id
+                main_user_id = current_user.id
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user2_id = users.id "
-                               "WHERE dialogues.user1_id = %s AND users.name = %s ", (first_user_id, name_second_user,))
+                               "WHERE (dialogues.user1_id = %s AND users.name = %s) ", (main_user_id, name_second_user,))
                 find_dialog = cursor.fetchall()
+                cursor.execute("SELECT dialogues.id "
+                               "FROM dialogues JOIN users ON dialogues.user1_id = users.id "
+                               "WHERE (dialogues.user2_id = %s AND users.name = %s) ",
+                               (main_user_id, name_second_user,))
+                find_dialog = find_dialog + cursor.fetchall()
                 find_dialog = [dialog[0] for dialog in find_dialog]
                 if not find_dialog:
                     raise HTTPException(status_code=404, detail="Dialog is not found")

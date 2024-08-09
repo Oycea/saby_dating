@@ -277,7 +277,7 @@ def patch_filters(age_min: Optional[int] = None, age_max: Optional[int] = None,
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/search_events/', name="search events to filters")
+@algorithm_router.get('/search_events/', name="search events to filters")#Добавить в events
 def search_events(title: Optional[str] = None, place: Optional[str] = None, is_online: Optional[bool] = None,
                   date_time: Optional[datetime] = None, tags: Optional[str] = None) -> dict[str, list[int]]:
     try:
@@ -287,9 +287,12 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                 if tags is not None:  # Если тэги в фильтре присутствую, то они проверяются первыми
                     tags = tags.split(',')
                     for key in tags:
-                        cursor.execute("SELECT events.id "
-                                       "FROM events JOIN events_tags ON events.id = events_tags.event_id "
-                                       "WHERE events_tags.tag_id = %s ", (key,))
+                        cursor.execute("SELECT event_id "
+                                       "FROM events_tags "
+                                       "WHERE tag_id = %s ", (key,))
+                        # cursor.execute("SELECT events_tags.event_id "
+                        #                "FROM events_tags JOIN tags ON events_tags.tag_id = tags.id "
+                        #                "WHERE tags.title = %s ", (key, ))
                         sel_events = cursor.fetchall()
                         sel_events = [event[0] for event in sel_events]
                         if key == tags[0]:
@@ -340,16 +343,21 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/search_dialog/', name="search dialog by name")#Находит все диалоги юзера, с предоставленным именем
+@algorithm_router.get('/search_dialog/', name="search dialog by name")#Добавить в pages
 def search_dialog(name_second_user: str, current_user: User = Depends(get_current_user)) -> dict[str, list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                first_user_id = current_user.id
+                main_user_id = current_user.id
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user2_id = users.id "
-                               "WHERE dialogues.user1_id = %s AND users.name = %s ", (first_user_id, name_second_user,))
+                               "WHERE (dialogues.user1_id = %s AND users.name = %s) ", (main_user_id, name_second_user,))
                 find_dialog = cursor.fetchall()
+                cursor.execute("SELECT dialogues.id "
+                               "FROM dialogues JOIN users ON dialogues.user1_id = users.id "
+                               "WHERE (dialogues.user2_id = %s AND users.name = %s) ",
+                               (main_user_id, name_second_user,))
+                find_dialog = find_dialog + cursor.fetchall()
                 find_dialog = [dialog[0] for dialog in find_dialog]
                 if not find_dialog:
                     raise HTTPException(status_code=404, detail="Dialog is not found")
@@ -366,14 +374,17 @@ def all_info(user_id: int) -> dict[str, list]:
                 cursor.execute("SELECT name, city, date_part('YEAR', AGE(DATE(birthday))) as age, position, height, biography,  "
                                "(SELECT title FROM genders WHERE id = users.gender_id LIMIT 1) as gender, "
                                "(SELECT title FROM targets WHERE id = users.target_id LIMIT 1) as target, "
-                               "(SELECT title FROM communications WHERE id = users.communication_id LIMIT 1) as communication, "
-                               "(SELECT image FROM users_images WHERE user_id = users.id LIMIT 1) as images, "
-                               "(SELECT interests.title FROM users_interests JOIN interests ON users_interests.interest_id = interests.id WHERE users_interests.user_id = users.id LIMIT 1) as interests "
+                               "(SELECT title FROM communications WHERE id = users.communication_id LIMIT 1) as communication "
                                "FROM users WHERE id = %s", (user_id,))
                 all_info_user = cursor.fetchone()
-                print(all_info_user)
+                cursor.execute("SELECT image FROM users_images WHERE user_id = %s", (user_id,))
+                all_img = cursor.fetchall()
+                all_img = [img[0] for img in all_img]
+                cursor.execute("SELECT interests.title FROM users_interests JOIN interests ON users_interests.interest_id = interests.id WHERE users_interests.user_id = %s", (user_id,))
+                all_interests = cursor.fetchall()
+                all_interests = [interest[0] for interest in all_interests]
                 if not all_info_user:
                     raise HTTPException(status_code=404, detail="User is not found")
-                return {f"Information about user with id {user_id}": all_info_user}
+                return {"Information about user": all_info_user, "All photos": all_img, "All interests": all_interests}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
