@@ -1,12 +1,17 @@
 from datetime import datetime
 from typing import Optional, List, Any, Dict
 import psycopg2
+import base64
+import json
+
+import requests
 
 from psycopg2.extras import RealDictCursor
 from fastapi import HTTPException, APIRouter, Depends, File, UploadFile
 
 from routers.session import open_conn
 from routers.authorization_router import get_current_user, User
+from config import IMAGES_API_KEY
 
 event_router = APIRouter(prefix='/events', tags=['Events'])
 
@@ -130,39 +135,24 @@ def get_event_tags(event_id: int) -> Dict[str, int | List[str]]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-# Не работает, переписать
 @event_router.get('/get_event_images/{event_id}', name='Get event images by event_id')
 def get_event_images(event_id: int):
     """
     Предоставляет информацию об изображениях мероприятия по его ID
 
     :param event_id: ID мероприятия
-    :return: Количество изображений и сами изображения
+    :return: Количество изображений и сссылки на изображения
     :raises HTTPException: Мероприятие не найдено или у него отсутствуют изображения
     """
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT image FROM events_images WHERE event_id=%s", (event_id,))
-                images_data = cursor.fetchall()
+                cursor.execute("SELECT image_url FROM events_images WHERE event_id=%s", (event_id,))
+                images_urls_data = cursor.fetchall()
 
-                if not images_data:
-                    raise HTTPException(status_code=404, detail="Images or event not found")
+                images_url = [image[0] for image in images_urls_data]
 
-                for image in images_data:
-                    image_type = imghdr.what(BytesIO(image))
-                    print(image_type)
-
-                    if image_type is None:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Неверный формат изображения"
-                        )
-
-                    image_base64 = base64.b64encode(images_data[0]).decode('utf-8')
-                    print(image_base64)
-
-                return {'size': len(images_urls), 'images urls': images_urls}
+            return images_url
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
@@ -315,8 +305,16 @@ async def upload_image(event_id: int, file: UploadFile = File(...),
 
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO events_images (event_id, image) VALUES (%s, %s) RETURNING id",
-                               (event_id, file_data))
+                image_base64 = base64.b64encode(file_data).decode('utf-8')
+                response = requests.post('https://api.imgbb.com/1/upload',
+                                         data={'key': IMAGES_API_KEY, 'image': image_base64})
+                response_data = response.content
+
+                response_data = json.loads(response_data.decode('utf-8'))
+                image_url = response_data['data']['url']
+
+                cursor.execute("INSERT INTO events_images (event_id, image_url) VALUES (%s, %s) RETURNING id",
+                               (event_id, image_url))
 
                 image_id = cursor.fetchone()
 
