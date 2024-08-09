@@ -132,7 +132,7 @@ def get_event_tags(event_id: int) -> Dict[str, int | List[str]]:
 
 # Не работает, переписать
 @event_router.get('/get_event_images/{event_id}', name='Get event images by event_id')
-def get_event_images(event_id: int) -> Dict[str, int | List[str]]:
+def get_event_images(event_id: int):
     """
     Предоставляет информацию об изображениях мероприятия по его ID
 
@@ -143,13 +143,24 @@ def get_event_images(event_id: int) -> Dict[str, int | List[str]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT url FROM events_images WHERE event_id=%s", (event_id,))
+                cursor.execute("SELECT image FROM events_images WHERE event_id=%s", (event_id,))
                 images_data = cursor.fetchall()
 
                 if not images_data:
                     raise HTTPException(status_code=404, detail="Images or event not found")
 
-                images_urls = [images[0] for images in images_data]
+                for image in images_data:
+                    image_type = imghdr.what(BytesIO(image))
+                    print(image_type)
+
+                    if image_type is None:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Неверный формат изображения"
+                        )
+
+                    image_base64 = base64.b64encode(images_data[0]).decode('utf-8')
+                    print(image_base64)
 
                 return {'size': len(images_urls), 'images urls': images_urls}
     except Exception as ex:
