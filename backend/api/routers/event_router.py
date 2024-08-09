@@ -428,7 +428,7 @@ def delete_event(event_id: int, current_user: User = Depends(get_current_user)) 
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@event_router.delete('/delete_user_from_the_event/{event_id}}',
+@event_router.delete('/delete_user_from_the_event/{event_id}',
                      name='Delete user from the event by event_id')
 def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, str]:
     """
