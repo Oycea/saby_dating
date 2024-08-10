@@ -39,7 +39,6 @@ class User(BaseModel):
     interests: List[Interest] = []
     biography: Optional[str] = None
     profile_image: Optional[str] = None
-    is_deleted: bool = False
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login")
@@ -134,7 +133,7 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, "
-                               "communication_id, biography, password, is_deleted FROM users WHERE email = %s",
+                               "communication_id, biography, password FROM users WHERE email = %s",
                                (email,)
                                )
                 user_data = cursor.fetchone()
@@ -170,8 +169,7 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                     communication_id=user_data[9],
                     interests=interests,
                     biography=user_data[10],
-                    profile_image=f"/photos/profile_photo/?user_id={user_data[0]}" if profile_image else None,
-                    is_deleted=user_data[12]
+                    profile_image=f"/photos/profile_photo/?user_id={user_data[0]}" if profile_image else None
                 )
                 return user
     except JWTError:
@@ -347,12 +345,12 @@ def confirm_email(token: str):
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
 
-
 @authorization_router.post('/login', response_model=Dict[str, str], name='Вход в систему')
-def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
+def login(response: Response, form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
     """
     Осуществляет вход пользователя в систему и возвращает токен доступа.
 
+    :param response: HTTP-объект ответа.
     :param form_data: Данные, содержащие имя пользователя и пароль.
     :return: Словарь, содержащий токен доступа и тип токена.
     :raises HTTPException: В случае неверных учетных данных, внутренней ошибке сервера.
@@ -363,19 +361,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT password, is_deleted FROM users WHERE email = %s", (email,))
+                cursor.execute("SELECT password FROM users WHERE email = %s", (email,))
                 user_data = cursor.fetchone()
                 if user_data is None:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Неверные почта или пароль",
-                        headers={"WWW-Authenticate": "Bearer"},
-                    )
-
-                if user_data[1]:
-                    raise HTTPException(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Профиль удалён",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
 
@@ -613,16 +604,7 @@ def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    UPDATE users
-                    SET is_deleted = %s
-                    WHERE id = %s
-                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
-                    biography
-                    """,
-                    (True, current_user.id)
-                )
+                cursor.execute("DELETE FROM users WHERE id = %s", (current_user.id,))
                 if cursor.rowcount == 0:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
