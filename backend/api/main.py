@@ -9,9 +9,9 @@ from routers.pass_reset_router import pass_reset_router
 from routers.photos_router import photos_router
 from routers.chat_router import chat_router
 from routers.pages_router import pages_router
+from routers.logs_router import logs_router
 from utils import setup_scheduler
 from exception_handlers import http_exception_handler
-
 
 origins = [
     "http://localhost",
@@ -59,10 +59,10 @@ def create_app() -> FastAPI:
     new_app.include_router(photos_router)
     new_app.include_router(chat_router)
     new_app.include_router(pages_router)
+    new_app.include_router(logs_router)
     new_app.add_exception_handler(HTTPException, http_exception_handler)
 
     return new_app
 
 
 app = create_app()
-
