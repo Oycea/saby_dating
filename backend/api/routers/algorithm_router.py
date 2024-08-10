@@ -1,3 +1,7 @@
+import imghdr
+import base64
+from io import BytesIO
+
 from datetime import datetime
 from typing import Optional
 
@@ -15,7 +19,7 @@ def get_all_users() -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM users")
+                cursor.execute("SELECT * FROM users WHERE is_deletes = true")
                 users = cursor.fetchall()
                 if not users:
                     raise HTTPException(status_code=404, detail="Users not found")
@@ -25,12 +29,14 @@ def get_all_users() -> list[dict]:
 
 
 @algorithm_router.get('/get_likes/', name='Get likes from user by user_id')
-def get_likes(current_user: User = Depends(get_current_user)) -> list[int]:
+def get_likes(current_user: User = Depends(get_current_user)) -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_id = current_user.id
-                cursor.execute("SELECT user_id_to FROM likes WHERE user_id_from=%s", (user_id,))
+                cursor.execute(
+                    "SELECT user_id_to, created_at FROM likes WHERE user_id_from=%s",
+                    (user_id,))
                 likes = cursor.fetchall()
                 if not likes:
                     raise HTTPException(status_code=404, detail="Likes not found")
@@ -46,7 +52,7 @@ def get_dislikes(current_user: User = Depends(get_current_user)) -> list[int]:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_id = current_user.id
-                cursor.execute("SELECT user_id_to FROM dislikes WHERE user_id_from=%s", (user_id,))
+                cursor.execute("SELECT user_id_to, created_at FROM dislikes WHERE user_id_from=% ", (user_id,))
                 dislikes = cursor.fetchall()
                 if not dislikes:
                     raise HTTPException(status_code=404, detail="Dislikes not found")
@@ -75,24 +81,31 @@ def find_matches(current_user: User = Depends(get_current_user)) -> list[int]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.post('/create_like/{user_like_to}', name='Create like')
+@algorithm_router.post('/create_like/{user_like_to}', name='Create like')  # Сделать проверку на существование диалога
 def create_like(user_like_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_like_from = current_user.id
-                cursor.execute("INSERT INTO likes (user_id_from, user_id_to) VALUES(%s, %s) RETURNING *",
-                               (user_like_from, user_like_to))
+                cursor.execute(
+                    "INSERT INTO likes (user_id_from, user_id_to, created_at) VALUES(%s, %s, NOW()::timestamp) "
+                    "RETURNING *",
+                    (user_like_from, user_like_to))
                 new_likes = cursor.fetchone()
                 if not new_likes:
                     raise HTTPException(status_code=404, detail="user_like_from/user_like_to not found")
                 cursor.execute("SELECT * FROM likes WHERE user_id_from = %s AND user_id_to = %s",
                                (user_like_to, user_like_from,))
-                new_match = cursor.fetchone()
+                new_match = cursor.fetchall()
                 if new_match:
-                    cursor.execute("INSERT INTO dialogues (user1_id, user2_id) VALUES(%s, %s)",
-                                   (user_like_from, user_like_to))
-                    return {"Match! A new dialog has been created!": [user_like_from, user_like_to]}
+                    cursor.execute(
+                        "SELECT * FROM dialogues WHERE ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND "
+                        "user2_id = %s)) AND is_deleted = false")
+                    if not cursor.fetchall():
+                        cursor.execute("INSERT INTO dialogues (user1_id, user2_id) VALUES(%s, %s)",
+                                       (user_like_from, user_like_to))
+                        return {"Match! A new dialog has been created!": [user_like_from, user_like_to]}
+                    return {"The dialogue already exists, like has been set": [user_like_from, user_like_to]}
                 else:
                     return {'The like has been set': new_likes}
     except psycopg2.IntegrityError:
@@ -107,8 +120,10 @@ def create_dislike(user_dislike_to: int, current_user: User = Depends(get_curren
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_dislike_from = current_user.id
-                cursor.execute("INSERT INTO dislikes (user_id_from, user_id_to) VALUES(%s, %s) RETURNING *",
-                               (user_dislike_from, user_dislike_to))
+                cursor.execute(
+                    "INSERT INTO dislikes (user_id_from, user_id_to, create_at) VALUES(%s, %s, NOW()::timestamp) "
+                    "RETURNING *",
+                    (user_dislike_from, user_dislike_to))
                 new_dislikes = cursor.fetchone()
                 if not new_dislikes:
                     raise HTTPException(status_code=404, detail="user_dislike_from/user_dislike_to not found")
@@ -119,7 +134,7 @@ def create_dislike(user_dislike_to: int, current_user: User = Depends(get_curren
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.delete('/delete_all_likes/', name='Delete all likes')
+@algorithm_router.delete('/delete_all_likes/', name='Delete all likes')  # Функция не нужна
 def delete_all_likes() -> dict[str, str]:
     try:
         with open_conn() as connection:
@@ -130,7 +145,7 @@ def delete_all_likes() -> dict[str, str]:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.delete('/delete_all_dislikes/', name='Delete all dislikes')
+@algorithm_router.delete('/delete_all_dislikes/', name='Delete all dislikes')  # Функция не нужна
 def delete_all_dislikes() -> dict[str, str]:
     try:
         with open_conn() as connection:
@@ -151,37 +166,41 @@ def list_questionnaires(current_user: User = Depends(get_current_user)) -> list[
                                  "SELECT ui.user_id as id FROM "
                                  "( "
                                  "filters_interests as fi JOIN users_interests AS ui "
-                                 "ON fi.interest_id = ui.interest_id "
+                                 "ON fi.interest_id = ui.interest_id AND fi.is_deleted AND fi.is_deleted = false AND "
+                                 "ui.is_deleted = false"
                                  ")"
                                  "WHERE fi.user_id = %s AND ui.user_id <> %s), "
                                  " "
                                  "tmp_table AS "
                                  "( "
                                  "(SELECT id FROM users WHERE city = (SELECT city FROM filters WHERE user_id = %s) AND "
-                                 "id <> %s) "
+                                 "id <> %s AND is_deleted = false) "
                                  " UNION ALL "
                                  "(SELECT id FROM users WHERE gender_id = (SELECT gender_id FROM filters WHERE user_id "
-                                 "= %s) AND id <> %s) "
+                                 "= %s) AND id <> %s AND is_deleted = false) "
                                  " UNION ALL "
                                  "(SELECT id FROM users WHERE target_id = (SELECT target_id FROM filters WHERE user_id "
-                                 "= %s) AND id <> %s) "
+                                 "= %s) AND id <> %s AND is_deleted = false) "
                                  " UNION ALL "
                                  "(SELECT id FROM users WHERE communication_id = (SELECT communication_id FROM filters "
-                                 "WHERE user_id = %s) AND id <> %s) "
+                                 "WHERE user_id = %s) AND id <> %s AND is_deleted = false) "
                                  " UNION ALL "
                                  "(SELECT id FROM users WHERE height BETWEEN (SELECT height_min FROM filters WHERE "
-                                 "user_id = %s) AND (SELECT height_max FROM filters WHERE user_id = %s) AND id <> %s) "
+                                 "user_id = %s) AND (SELECT height_max FROM filters WHERE user_id = %s) AND id <> %s "
+                                 "AND is_deleted = false)"
                                  " UNION ALL "
                                  "(SELECT id FROM users WHERE date_part('YEAR', AGE(DATE(birthday))) BETWEEN (SELECT "
                                  "age_min FROM filters WHERE user_id = %s) AND (SELECT age_max FROM filters WHERE "
-                                 "user_id = %s) AND id <> %s) "
+                                 "user_id = %s) AND id <> %s AND is_deleted = false) "
                                  ") "
                                  " "
                                  "SELECT id "
                                  "FROM (SELECT id FROM tmp_interests UNION ALL SELECT id FROM tmp_table) "
                                  "GROUP BY id "
-                                 "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_id_from = %s) "
-                                 "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s) "
+                                 "HAVING id NOT IN (SELECT user_id_to FROM likes WHERE user_id_from = %s AND "
+                                 "status_reaction(created_at) = true)"
+                                 "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s AND "
+                                 "status_reaction(created_at) = true)"
                                  "ORDER BY count(*) DESC; "
                                  )
                 sel_vars = (
@@ -194,9 +213,11 @@ def list_questionnaires(current_user: User = Depends(get_current_user)) -> list[
                 cursor.execute(first_request, sel_vars)
                 all_questionnaires = cursor.fetchall()
                 if not all_questionnaires:
-                    second_request = ("SELECT id FROM users WHERE id <> %s "
-                                      "AND id NOT IN (SELECT user_id_to FROM likes WHERE user_id_from = %s) "
-                                      "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s) ")
+                    second_request = ("SELECT id FROM users WHERE id <> %s AND is_deleted = false "
+                                      "AND id NOT IN (SELECT user_id_to FROM likes WHERE user_id_from = %s AND "
+                                      "status_reaction(created_at) = true)"
+                                      "AND id NOT IN (SELECT user_id_to FROM dislikes WHERE user_id_from = %s AND "
+                                      "status_reaction(created_at) = true) ")
                     sel_vars = (user_id_var, user_id_var, user_id_var)
                     cursor.execute(second_request, sel_vars)
                     all_questionnaires = cursor.fetchall()
@@ -242,7 +263,7 @@ def patch_filters(age_min: Optional[int] = None, age_max: Optional[int] = None,
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_id = current_user.id
-                cursor.execute("SELECT * FROM filters WHERE user_id = %s ", (user_id,))
+                cursor.execute("SELECT * FROM filters WHERE user_id = %s and is_deleted = false ", (user_id,))
                 search_filters = cursor.fetchone()
                 if not search_filters:
                     raise HTTPException(status_code=404, detail="no filters were found for this user")
@@ -277,7 +298,7 @@ def patch_filters(age_min: Optional[int] = None, age_max: Optional[int] = None,
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/search_events/', name="search events to filters")#Добавить в events
+@algorithm_router.get('/search_events/', name="search events to filters")  # Добавить в events
 def search_events(title: Optional[str] = None, place: Optional[str] = None, is_online: Optional[bool] = None,
                   date_time: Optional[datetime] = None, tags: Optional[str] = None) -> dict[str, list[int]]:
     try:
@@ -289,7 +310,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                     for key in tags:
                         cursor.execute("SELECT event_id "
                                        "FROM events_tags "
-                                       "WHERE tag_id = %s ", (key,))
+                                       "WHERE tag_id = %s AND is_deleted = false ", (key,))
                         # cursor.execute("SELECT events_tags.event_id "
                         #                "FROM events_tags JOIN tags ON events_tags.tag_id = tags.id "
                         #                "WHERE tags.title = %s ", (key, ))
@@ -303,7 +324,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                         raise HTTPException(status_code=404,
                                             detail="Events with these parameters were not found")  # Если по тэгам никаких совпадений нет, то конец
                 if title is not None:
-                    cursor.execute("SELECT id FROM events WHERE title = %s",
+                    cursor.execute("SELECT id FROM events WHERE title = %s AND is_deleted = false ",
                                    (title,))  # Для каждого фильтра происходит поиск id ивента
                     events_by_title = cursor.fetchall()
                     events_by_title = [event[0] for event in events_by_title]
@@ -313,7 +334,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                         list_events = [x for x in list_events if
                                        x in events_by_title]  # В окончательный список ивентов попадут лишь те,которые совпали с предыдущими фильтрами
                 if place is not None:
-                    cursor.execute("SELECT id FROM events WHERE place = %s", (place,))
+                    cursor.execute("SELECT id FROM events WHERE place = %s AND is_deleted = false ", (place,))
                     events_by_place = cursor.fetchall()
                     events_by_place = [event[0] for event in events_by_place]
                     if not list_events:
@@ -321,7 +342,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                     else:
                         list_events = [x for x in list_events if x in events_by_place]
                 if is_online is not None:
-                    cursor.execute("SELECT id FROM events WHERE is_online = %s", (is_online,))
+                    cursor.execute("SELECT id FROM events WHERE is_online = %s AND is_deleted = false ", (is_online,))
                     events_by_is_online = cursor.fetchall()
                     events_by_is_online = [event[0] for event in events_by_is_online]
                     if not list_events:
@@ -329,7 +350,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
                     else:
                         list_events = [x for x in list_events if x in events_by_is_online]
                 if date_time is not None:
-                    cursor.execute("SELECT id FROM events WHERE datetime = %s", (title,))
+                    cursor.execute("SELECT id FROM events WHERE datetime = %s AND is_deleted = false ", (title,))
                     events_by_date_time = cursor.fetchall()
                     events_by_date_time = [event[0] for event in events_by_date_time]
                     if not list_events:
@@ -343,7 +364,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/search_dialog/', name="search dialog by name")#Добавить в pages
+@algorithm_router.get('/search_dialog/', name="search dialog by name")  # Добавить в pages
 def search_dialog(name_second_user: str, current_user: User = Depends(get_current_user)) -> dict[str, list[int]]:
     try:
         with open_conn() as connection:
@@ -351,11 +372,12 @@ def search_dialog(name_second_user: str, current_user: User = Depends(get_curren
                 main_user_id = current_user.id
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user2_id = users.id "
-                               "WHERE (dialogues.user1_id = %s AND users.name = %s) ", (main_user_id, name_second_user,))
+                               "WHERE (dialogues.user1_id = %s AND users.name = %s  AND is_deleted = false ) ",
+                               (main_user_id, name_second_user,))
                 find_dialog = cursor.fetchall()
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user1_id = users.id "
-                               "WHERE (dialogues.user2_id = %s AND users.name = %s) ",
+                               "WHERE (dialogues.user2_id = %s AND users.name = %s  AND is_deleted = false ) ",
                                (main_user_id, name_second_user,))
                 find_dialog = find_dialog + cursor.fetchall()
                 find_dialog = [dialog[0] for dialog in find_dialog]
@@ -371,20 +393,32 @@ def all_info(user_id: int) -> dict[str, list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT name, city, date_part('YEAR', AGE(DATE(birthday))) as age, position, height, biography,  "
-                               "(SELECT title FROM genders WHERE id = users.gender_id LIMIT 1) as gender, "
-                               "(SELECT title FROM targets WHERE id = users.target_id LIMIT 1) as target, "
-                               "(SELECT title FROM communications WHERE id = users.communication_id LIMIT 1) as communication "
-                               "FROM users WHERE id = %s", (user_id,))
+                cursor.execute(
+                    "SELECT name, city, date_part('YEAR', AGE(DATE(birthday))) as age, position, height, biography,  "
+                    "(SELECT title FROM genders WHERE id = users.gender_id LIMIT 1) as gender, "
+                    "(SELECT title FROM targets WHERE id = users.target_id LIMIT 1) as target, "
+                    "(SELECT title FROM communications WHERE id = users.communication_id LIMIT 1) as communication "
+                    "FROM users WHERE id = %s AND is_deleted = false", (user_id,))
                 all_info_user = cursor.fetchone()
-                cursor.execute("SELECT image FROM users_images WHERE user_id = %s", (user_id,))
-                all_img = cursor.fetchall()
-                all_img = [img[0] for img in all_img]
-                cursor.execute("SELECT interests.title FROM users_interests JOIN interests ON users_interests.interest_id = interests.id WHERE users_interests.user_id = %s", (user_id,))
+                cursor.execute("SELECT image FROM users_images WHERE user_id = %s and is_profile_image = false",
+                               (user_id,))  # Не главные фото профиля
+                other_img = cursor.fetchall()
+                other_img = [img[0] for img in other_img]
+                other_img = [base64.b64encode(photo).decode('utf-8') for photo in other_img]
+                cursor.execute("SELECT image FROM users_images WHERE user_id = %s and is_profile_image = true",
+                               (user_id,))  # Главное фото профиля
+                main_img = cursor.fetchall()
+                main_img = [img[0] for img in main_img]
+                main_img = [base64.b64encode(photo).decode('utf-8') for photo in main_img]
+                cursor.execute(
+                    "SELECT interests.title FROM users_interests JOIN interests ON users_interests.interest_id = "
+                    "interests.id WHERE users_interests.user_id = %s",
+                    (user_id,))
                 all_interests = cursor.fetchall()
                 all_interests = [interest[0] for interest in all_interests]
                 if not all_info_user:
                     raise HTTPException(status_code=404, detail="User is not found")
-                return {"Information about user": all_info_user, "All photos": all_img, "All interests": all_interests}
+                return {"Information about user": all_info_user, "Profile image": main_img, "Other photos": other_img,
+                        "All interests": all_interests}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))

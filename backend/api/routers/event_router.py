@@ -614,7 +614,7 @@ def search_events(title: Optional[str] = None,
                     for key in tags:
                         cursor.execute("SELECT event_id "
                                        "FROM events_tags "
-                                       "WHERE tag_id = %s ", (key,))
+                                       "WHERE tag_id = %s  AND is_deleted = false ", (key,))
                         sel_events = cursor.fetchall()
                         sel_events = [event[0] for event in sel_events]
                         if key == tags[0]:
@@ -626,7 +626,7 @@ def search_events(title: Optional[str] = None,
                                             detail="Events with these parameters were not found")
                         # Если по тегам никаких совпадений нет, то конец
                 if title is not None:
-                    cursor.execute("SELECT id FROM events WHERE title = %s",
+                    cursor.execute("SELECT id FROM events WHERE title = %s AND is_deleted = false ",
                                    (title,))  # Для каждого фильтра происходит поиск id ивента
                     events_by_title = cursor.fetchall()
                     events_by_title = [event[0] for event in events_by_title]
@@ -637,7 +637,7 @@ def search_events(title: Optional[str] = None,
                                        x in events_by_title]
                         # В окончательный список мероприятий попадут лишь те, которые совпали с предыдущими фильтрами
                 if place is not None:
-                    cursor.execute("SELECT id FROM events WHERE place = %s", (place,))
+                    cursor.execute("SELECT id FROM events WHERE place = %s AND is_deleted = false ", (place,))
                     events_by_place = cursor.fetchall()
                     events_by_place = [event[0] for event in events_by_place]
                     if not list_events:
@@ -645,7 +645,7 @@ def search_events(title: Optional[str] = None,
                     else:
                         list_events = [x for x in list_events if x in events_by_place]
                 if is_online is not None:
-                    cursor.execute("SELECT id FROM events WHERE is_online = %s", (is_online,))
+                    cursor.execute("SELECT id FROM events WHERE is_online = %s AND is_deleted = false ", (is_online,))
                     events_by_is_online = cursor.fetchall()
                     events_by_is_online = [event[0] for event in events_by_is_online]
                     if not list_events:
@@ -653,7 +653,7 @@ def search_events(title: Optional[str] = None,
                     else:
                         list_events = [x for x in list_events if x in events_by_is_online]
                 if date is not None:
-                    cursor.execute("SELECT id FROM events WHERE datetime = %s", (title,))
+                    cursor.execute("SELECT id FROM events WHERE datetime = %s AND is_deleted = false ", (title,))
                     events_by_date = cursor.fetchall()
                     events_by_date = [event[0] for event in events_by_date]
                     if not list_events:

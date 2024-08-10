@@ -139,11 +139,11 @@ def search_dialog(name_second_user: str, current_user: User = Depends(get_curren
                 main_user_id = current_user.id
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user2_id = users.id "
-                               "WHERE (dialogues.user1_id = %s AND users.name = %s) ", (main_user_id, name_second_user,))
+                               "WHERE (dialogues.user1_id = %s AND users.name = %s  AND is_deleted = false ) ", (main_user_id, name_second_user,))
                 find_dialog = cursor.fetchall()
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user1_id = users.id "
-                               "WHERE (dialogues.user2_id = %s AND users.name = %s) ",
+                               "WHERE (dialogues.user2_id = %s AND users.name = %s  AND is_deleted = false ) ",
                                (main_user_id, name_second_user,))
                 find_dialog = find_dialog + cursor.fetchall()
                 find_dialog = [dialog[0] for dialog in find_dialog]
