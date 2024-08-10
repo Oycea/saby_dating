@@ -6,6 +6,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <title>Чат</title>
     <style>
         body {
@@ -32,6 +33,27 @@
             font-size: 24px;
             border-top-left-radius: 10px;
             border-top-right-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-button {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            margin-right: auto;
+        }
+
+        .back-button:hover {
+            text-decoration: none;
+            color: white;
+        }
+
+        .user-name {
+            color: white;
+            flex-grow: 1;
+            text-align: center;
         }
 
         .message-box {
@@ -50,7 +72,6 @@
             background-color: #f9f9f9;
             overflow-y: auto;
         }
-
 
         .chat {
             list-style: none;
@@ -74,13 +95,7 @@
             border-radius: 100%;
         }
 
-        .chat .self .avatar img {
-            width: 40px;
-            height: 40px;
-            border-radius: 100%;
-            margin-left: 5px;
-        }
-
+        .chat .self .avatar img,
         .chat .other .avatar img {
             width: 40px;
             height: 40px;
@@ -89,18 +104,18 @@
 
         .other .msg {
             order: 1;
-            border-top-left-radius: 0px;
+            border-top-left-radius: 0;
             box-shadow: -1px 2px 0px #D4D4D4;
         }
 
         .other:before {
             content: "";
             position: relative;
-            top: 0px;
-            right: 0px;
+            top: 0;
+            right: 0;
             left: 40px;
-            width: 0px;
-            height: 0px;
+            width: 0;
+            height: 0;
             border: 5px solid #e5e5e5;
             border-left-color: transparent;
             border-bottom-color: transparent;
@@ -113,7 +128,7 @@
 
         .self .msg {
             order: 1;
-            border-bottom-right-radius: 0px;
+            border-bottom-right-radius: 0;
             box-shadow: 1px 2px 0px #D4D4D4;
         }
 
@@ -126,9 +141,9 @@
             position: relative;
             display: inline-block;
             bottom: 17px;
-            right: 0px;
-            width: 0px;
-            height: 0px;
+            right: 0;
+            width: 0;
+            height: 0;
             border: 5px solid #e5e5e5;
             border-right-color: transparent;
             border-top-color: transparent;
@@ -166,7 +181,6 @@
             float: right;
         }
 
-
         input {
             width: 100%;
             height: 50px;
@@ -175,6 +189,12 @@
             border: none;
             border-top: 1px solid #ccc;
             box-sizing: border-box;
+        }
+
+        .send-button {
+            max-width: 50px;
+            background-color: white;
+            border-left: 1px solid #ccc;
         }
     </style>
 </head>
@@ -193,25 +213,25 @@
     </nav>
     <div class="content">
         <div class="header" style="color: white; font-weight: bold">
-            Сообщения
+            <a href="dialogues.html" class="back-button"><i class="fas fa-arrow-left"></i></a>
+            <div class="user-name" id="user-name"></div>
+            <img src="" id="other-user-image" style="width: 40px; height: 40px; border-radius: 50%;">
         </div>
         <div class="message-box">
             <div class="messages">
-                <ol id='messages' class="chat">
-
-                </ol>
+                <ol id='messages' class="chat"></ol>
             </div>
             <form action="" onsubmit="sendMessage(event)" style="display: flex">
                 <input type="text" placeholder="Введите сообщение..." id="messageText" autocomplete="off"
                        style="border-bottom-left-radius: 10px;">
-                <input type="submit" value=">"
-                       style="max-width: 50px; background-color: white; border-left: 1px solid #ccc">
+                <input type="submit" value="&#8594;" class="send-button" style="font-size: 18px;">
             </form>
         </div>
     </div>
 </div>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function () {  // Запрос к бекенду, сохранение и запись данных
+    document.addEventListener('DOMContentLoaded', function () {  // Отправка запроса к бекенду и запись данных
         const urlParams = new URLSearchParams(window.location.search);
         const dialogueId = urlParams.get('dialogue_id');
         const token = localStorage.getItem('access_token');
@@ -239,6 +259,10 @@
                 const messagesContainer = document.getElementById('messages');
                 const profileImage = data.profile_image;
                 const otherUserImage = data.other_user.profile_image;
+                const otherUserName = data.other_user.name;
+
+                document.getElementById('user-name').innerText = otherUserName;
+                document.getElementById('other-user-image').src = otherUserImage;
 
                 data.limited_result.reverse().forEach(message => {
                     const li = document.createElement('li');
@@ -275,10 +299,11 @@
             .catch(error => {
                 console.error('Ошибка:', error);
                 alert('Не удалось загрузить информацию о пользователе');
+                window.location.href = 'index.html';
             });
     });
 
-    let offset = 30; // Начальный индекс для загрузки сообщений
+     let offset = 30; // Начальный индекс для загрузки сообщений
     const limit = 30; // Кол-во сообщений для загрузки
     let loadingMessages = false;
 
@@ -376,7 +401,6 @@
         ws.send(JSON.stringify(messageData));
         input.value = '';
     }
-
 </script>
 </body>
 </html>
