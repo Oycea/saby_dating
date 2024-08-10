@@ -44,17 +44,15 @@ async def websocket_endpoint(websocket: WebSocket):
             user_id = data_json.get("userId")
             dialogue_id = data_json.get("dialogue_id")
             date = datetime.datetime.now().strftime("%H:%M")
-            if message != "":
-                try:
-                    with open_conn() as conn:
-                        with conn.cursor() as cursor:
-                            cursor.execute(
-                                "INSERT INTO messages(user_id, message, date, dialogue_id) VALUES(%s, %s, %s, %s)",
-                                (user_id, message, datetime.datetime.now(), dialogue_id))
-                except Exception as ex:
-                    raise HTTPException(status_code=500, detail=str(ex))
-            else:
-                return False
+            try:
+                with open_conn() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute(
+                            "INSERT INTO messages(user_id, message, date, dialogue_id) VALUES(%s, %s, %s, %s)",
+                            (user_id, message, datetime.datetime.now(), dialogue_id))
+            except Exception as ex:
+                raise HTTPException(status_code=500, detail=str(ex))
+            
             await manager.broadcast(user_id, message, date)
 
     except WebSocketDisconnect:

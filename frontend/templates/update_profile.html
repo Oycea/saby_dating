@@ -6,6 +6,9 @@
     <title>Изменение профиля</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -97,34 +100,47 @@
                     <form id="edit-profile-form">
                         <div class="form-group">
                             <label for="name">Имя</label>
-                            <input type="text" class="form-control" id="name" placeholder="Введите ваше имя" required>
+                            <input type="text" class="form-control" id="name" placeholder="Введите ваше имя">
                         </div>
                         <div class="form-group">
                             <label for="city">Город</label>
-                            <input type="text" class="form-control" id="city" placeholder="Введите ваш город" required>
+                            <select class="form-control" id="city">
+                                <option value="" disabled selected>Выберите ваш город</option>
+                                <option value="Ярославль">Ярославль</option>
+                                <option value="Санкт-Петербург">Санкт-Петербург</option>
+                                <option value="Тюмень">Тюмень</option>
+                                <option value="Уфа">Уфа</option>
+                                <option value="Новосибирск">Новосибирск</option>
+                                <option value="Казань">Казань</option>
+                                <option value="Екатеринбург">Екатеринбург</option>
+                                <option value="Севастополь">Севастополь</option>
+                                <option value="Рыбинск">Рыбинск</option>
+                                <option value="Кострома">Кострома</option>
+                                <option value="Калининград">Калининград</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="birthday">Дата рождения</label>
-                            <input type="date" class="form-control" id="birthday" required>
+                            <input type="date" class="form-control" id="birthday">
                         </div>
                         <div class="form-group">
                             <label for="height">Рост</label>
-                            <input type="number" class="form-control" id="height" placeholder="Введите ваш рост" required>
+                            <input type="number" class="form-control" id="height" placeholder="Введите ваш рост">
                         </div>
                         <div class="form-group">
                             <label for="gender_id">Пол</label>
-                            <select class="form-control" id="gender_id" required>
+                            <select class="form-control" id="gender_id">
                                 <option value="1">Мужской</option>
                                 <option value="2">Женский</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="target_id">Цель</label>
-                            <input type="number" class="form-control" id="target_id" placeholder="Введите ID цели" required>
+                            <input type="number" class="form-control" id="target_id" placeholder="Введите ID цели">
                         </div>
                         <div class="form-group">
                             <label for="communication_id">Вид общения</label>
-                            <input type="number" class="form-control" id="communication_id" placeholder="Введите ID связи" required>
+                            <input type="number" class="form-control" id="communication_id" placeholder="Введите ID связи">
                         </div>
                         <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
                     </form>
@@ -135,8 +151,51 @@
             </main>
         </div>
     </div>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    document.getElementById('edit-profile-form').addEventListener('submit', function(event) {
+    event.preventDefault(); // Предотвращаем обычное отправление формы
+
+    const name = document.getElementById('name').value || undefined;
+    const city = document.getElementById('city').value || undefined;
+    const birthday = document.getElementById('birthday').value || undefined;
+    const height = document.getElementById('height').value ? parseInt(document.getElementById('height').value) : undefined;
+    const gender_id = document.getElementById('gender_id').value ? parseInt(document.getElementById('gender_id').value) : undefined;
+    const target_id = document.getElementById('target_id').value ? parseInt(document.getElementById('target_id').value) : undefined;
+    const communication_id = document.getElementById('communication_id').value ? parseInt(document.getElementById('communication_id').value) : undefined;
+
+    // Создаем объект с данными для отправки
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (city !== undefined) data.city = city;
+    if (birthday !== undefined) data.birthday = birthday;
+    if (height !== undefined) data.height = height;
+    if (gender_id !== undefined) data.gender_id = gender_id;
+    if (target_id !== undefined) data.target_id = target_id;
+    if (communication_id !== undefined) data.communication_id = communication_id;
+
+    // Выполняем запрос на сервер
+    fetch('http://195.133.201.168:8000/authorization/update_profile', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Если необходимо передать токен
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Ошибка при обновлении профиля');
+        }
+        return response.json();
+    })
+    .then(updatedUser => {
+        alert('Профиль успешно обновлен');
+        window.location.href = 'profile.html';
+    })
+    .catch(error => {
+        alert('Не удалось обновить профиль: ' + error.message);
+    });
+});
+</script>
 </body>
 </html>
