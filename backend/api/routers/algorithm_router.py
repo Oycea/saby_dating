@@ -19,7 +19,7 @@ def get_all_users() -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM users WHERE is_deletes = true")
+                cursor.execute("SELECT * FROM users")
                 users = cursor.fetchall()
                 if not users:
                     raise HTTPException(status_code=404, detail="Users not found")
