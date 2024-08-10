@@ -141,7 +141,7 @@ def get_event_images(event_id: int):
     Предоставляет информацию об изображениях мероприятия по его ID
 
     :param event_id: ID мероприятия
-    :return: Количество изображений и сссылки на изображения
+    :return: Количество изображений и ссылки на изображения
     :raises HTTPException: Мероприятие не найдено или у него отсутствуют изображения
     """
     try:
@@ -542,7 +542,6 @@ def delete_image_from_the_event(event_id: int, image_id: int,
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-# Функция поиска события
 @event_router.get('/search_events/', name="search events to filters")
 def search_events(title: Optional[str] = None,
                   place: Optional[str] = None,
