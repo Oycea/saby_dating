@@ -1,7 +1,7 @@
 import time
 from datetime import date, datetime, timedelta
 from typing import Dict, Any, Optional, List
-
+from fastapi.params import Body
 from email_validator import validate_email, EmailNotValidError
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query, Form
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -378,19 +378,19 @@ def add_interest(interest_title: str, current_user: User = Depends(get_current_u
         )
 
 
-@authorization_router.patch('/profile/', response_model=User, name='Обновление профиля')
+@authorization_router.patch('/update_profile', response_model=User, name='Обновление профиля')
 def update_profile(
         current_user: User = Depends(get_current_user),
-        email: Optional[EmailStr] = Query(None),
-        name: Optional[str] = Query(None),
-        city: Optional[str] = Query(None),
-        birthday: Optional[date] = Query(None),
-        position: Optional[str] = Query(None),
-        height: Optional[int] = Query(None),
-        gender_id: Optional[int] = Query(None),
-        target_id: Optional[int] = Query(None),
-        communication_id: Optional[int] = Query(None),
-        biography: Optional[str] = Query(None)) -> User:
+        email: Optional[EmailStr] = Body(None),
+        name: Optional[str] = Body(None),
+        city: Optional[str] = Body(None),
+        birthday: Optional[date] = Body(None),
+        position: Optional[str] = Body(None),
+        height: Optional[int] = Body(None),
+        gender_id: Optional[int] = Body(None),
+        target_id: Optional[int] = Body(None),
+        communication_id: Optional[int] = Body(None),
+        biography: Optional[str] = Body(None)) -> User:
     """
     Обновляет поля анкеты текущего пользователя.
 
