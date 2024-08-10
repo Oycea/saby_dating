@@ -37,6 +37,17 @@ def check_creator(event_id: int, user_id: int) -> None:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
+def upload_image(file_data) -> str:
+    image_base64 = base64.b64encode(file_data).decode('utf-8')
+    response = requests.post('https://api.imgbb.com/1/upload',
+                             data={'key': IMAGES_API_KEY, 'image': image_base64})
+    response_data = response.content
+
+    response_data = json.loads(response_data.decode('utf-8'))
+    image_url = response_data['data']['url']
+    return image_url
+
+
 @event_router.get('/get_event/{event_id}', name='Get event by event_id')
 def get_event(event_id: int) -> Dict[str, Any]:
     """
@@ -326,8 +337,8 @@ def add_tag_to_the_event(event_id: int, tag_title: str,
 
 
 @event_router.post("/upload_event_image/{event_id}", name='Add image to the event by event_id')
-async def upload_image(event_id: int, file: UploadFile = File(...),
-                       current_user: User = Depends(get_current_user)) -> Dict[str, str]:
+async def upload_event_image(event_id: int, file: UploadFile = File(...),
+                             current_user: User = Depends(get_current_user)) -> Dict[str, str]:
     """
     Добавляет изображение мероприятию
 
@@ -343,13 +354,7 @@ async def upload_image(event_id: int, file: UploadFile = File(...),
 
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                image_base64 = base64.b64encode(file_data).decode('utf-8')
-                response = requests.post('https://api.imgbb.com/1/upload',
-                                         data={'key': IMAGES_API_KEY, 'image': image_base64})
-                response_data = response.content
-
-                response_data = json.loads(response_data.decode('utf-8'))
-                image_url = response_data['data']['url']
+                image_url = upload_image(file_data)
 
                 cursor.execute("INSERT INTO events_images (event_id, image_url) VALUES (%s, %s) RETURNING id",
                                (event_id, image_url))
