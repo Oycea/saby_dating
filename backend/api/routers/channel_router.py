@@ -22,7 +22,7 @@ def get_channel() -> dict[str, int | Any]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM channels")
+                cursor.execute("SELECT * FROM channels WHERE is_deleted=False")
                 channels = cursor.fetchall()
 
                 if not channels:
@@ -45,7 +45,7 @@ def get_channel(channel_id: int) -> dict:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM channels WHERE id=%s", (channel_id,))
+                cursor.execute("SELECT * FROM channels WHERE id=%s AND is_deleted=False", (channel_id,))
                 channel = cursor.fetchone()
 
                 if not channel:
@@ -68,7 +68,7 @@ def get_channel_users(channel_id: int) -> dict[str, int | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT * FROM channels_users WHERE channel_id=%s", (channel_id,))
+                cursor.execute("SELECT * FROM channels_users WHERE channel_id=%s AND is_deleted=False", (channel_id,))
                 channel_data = cursor.fetchall()
 
                 if not channel_data:

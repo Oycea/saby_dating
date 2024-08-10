@@ -49,7 +49,7 @@ def get_event(event_id: int) -> Dict[str, Any]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM events WHERE id=%s", (event_id,))
+                cursor.execute("SELECT * FROM events WHERE id=%s AND is_deleted=False", (event_id,))
                 event = cursor.fetchone()
 
                 if not event:
@@ -71,7 +71,7 @@ def get_future_events() -> Dict[str, int | List[Dict[str, Any]]]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM events WHERE datetime>%s", (datetime.now(),))
+                cursor.execute("SELECT * FROM events WHERE datetime>%s AND is_deleted=False", (datetime.now(),))
                 events = cursor.fetchall()
 
                 if not events:
@@ -94,7 +94,7 @@ def get_event_users(event_id: int) -> Dict[str, int | List[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT user_id FROM events_users WHERE event_id=%s", (event_id,))
+                cursor.execute("SELECT user_id FROM events_users WHERE event_id=%s AND is_deleted=False", (event_id,))
                 users_data = cursor.fetchall()
 
                 if not users_data:
@@ -121,7 +121,7 @@ def get_event_tags(event_id: int) -> Dict[str, int | List[str]]:
                 cursor.execute(
                     "SELECT t.title FROM "
                     "tags t JOIN events_tags et "
-                    "ON t.id = et.tag_id WHERE et.event_id=%s",
+                    "ON t.id = et.tag_id WHERE et.event_id=%s AND t.is_deleted=False AND et.is_deleted=False",
                     (event_id,))
                 tags_data = cursor.fetchall()
 
@@ -147,12 +147,40 @@ def get_event_images(event_id: int):
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT image_url FROM events_images WHERE event_id=%s", (event_id,))
+                cursor.execute("SELECT image_url FROM events_images WHERE event_id=%s AND is_deleted=False",
+                               (event_id,))
                 images_urls_data = cursor.fetchall()
 
                 images_url = [image[0] for image in images_urls_data]
 
-            return images_url
+                return images_url
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@event_router.get('/get_user_events', name='Get events in which this user participates')
+def get_users_events(current_user: User = Depends(get_current_user)) -> Dict[str, int | Any]:
+    """
+        Предоставляет информацию о мероприятиях, в которых участвует данный пользователь
+
+        :param current_user: Текущий пользователь
+        :return: Количество мероприятий и информацию о них
+        :raises HTTPException: Мероприятия не найдены
+        """
+    try:
+        with open_conn() as connection:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                user_id = current_user.id
+                cursor.execute("SELECT e.* FROM "
+                               "events e JOIN events_users eu "
+                               "ON eu.event_id = e.id WHERE eu.user_id=%s AND e.is_deleted=False AND e.datetime>%s",
+                               (user_id, datetime.now()))
+                events = cursor.fetchall()
+
+                if not events:
+                    raise HTTPException(status_code=404, detail="Events not found")
+
+                return {'size': len(events), 'events_info': events}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
@@ -223,9 +251,15 @@ def add_user_to_the_event(event_id: int, current_user: User = Depends(get_curren
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_id = current_user.id
-                cursor.execute("INSERT INTO events_users (event_id, user_id) VALUES (%s, %s)", (event_id, user_id))
 
-                cursor.execute("SELECT user_id FROM events_users WHERE event_id=%s", (event_id,))
+                cursor.execute("UPDATE events_users SET is_deleted=False WHERE event_id=%s AND user_id=%s RETURNING *",
+                               (event_id, user_id))
+                event_info = cursor.fetchone()
+
+                if not event_info:
+                    cursor.execute("INSERT INTO events_users (event_id, user_id) VALUES (%s, %s)", (event_id, user_id))
+
+                cursor.execute("SELECT user_id FROM events_users WHERE event_id=%s AND is_deleted=False", (event_id,))
                 events_users = cursor.fetchall()
 
                 if not events_users:
@@ -264,14 +298,18 @@ def add_tag_to_the_event(event_id: int, tag_title: str,
 
                 tag_id = tag_id_row[0]
 
-                # Добавление тега к событию
-                cursor.execute("INSERT INTO events_tags (event_id, tag_id) VALUES (%s, %s)", (event_id, tag_id))
+                cursor.execute("UPDATE events_tags SET is_deleted=False WHERE event_id=%s AND tag_id=%s RETURNING *",
+                               (event_id, tag_id))
+                tag_info = cursor.fetchone()
+
+                if not tag_info:
+                    cursor.execute("INSERT INTO events_tags (event_id, tag_id) VALUES (%s, %s)", (event_id, tag_id))
 
                 # Получение всех тегов для события
                 cursor.execute(
                     "SELECT t.title FROM "
                     "tags t JOIN events_tags et "
-                    "ON t.id = et.tag_id WHERE et.event_id=%s",
+                    "ON t.id = et.tag_id WHERE et.event_id=%s AND et.is_deleted=False",
                     (event_id,))
                 tags_data = cursor.fetchall()
 
@@ -321,7 +359,7 @@ async def upload_image(event_id: int, file: UploadFile = File(...),
                 if not image_id:
                     raise HTTPException(status_code=404, detail="No images or event found")
 
-        return {"detail": f"Image with id {image_id[0]} successfully uploaded to the event {event_id}"}
+                return {"detail": f"Image with id {image_id[0]} successfully uploaded to the event {event_id}"}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
@@ -393,7 +431,7 @@ def edit_event_info(event_id: int,
 
                 cursor.execute(
                     "UPDATE events SET title=%s, description=%s, place=%s, datetime=%s, "
-                    "users_limit=%s, is_online=%s WHERE id=%s RETURNING *",
+                    "users_limit=%s, is_online=%s WHERE id=%s AND is_deleted=False RETURNING *",
                     (*update_fields.values(), event_id))
                 updated_event = cursor.fetchone()
 
@@ -417,7 +455,7 @@ def delete_event(event_id: int, current_user: User = Depends(get_current_user)) 
 
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("DELETE FROM events WHERE id=%s RETURNING *", (event_id,))
+                cursor.execute("UPDATE events SET is_deleted=True WHERE id=%s RETURNING *", (event_id,))
                 event = cursor.fetchone()
 
                 if not event:
@@ -453,7 +491,7 @@ def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_c
                 if creator_id == user_id:
                     return {'message': f'Can not delete creator from users List'}
 
-                cursor.execute("DELETE FROM events_users WHERE event_id=%s AND user_id=%s RETURNING *",
+                cursor.execute("UPDATE events_users SET is_deleted=True WHERE event_id=%s AND user_id=%s RETURNING *",
                                (event_id, user_id))
                 event_user = cursor.fetchone()
 
@@ -492,7 +530,7 @@ def delete_tag_from_the_event(event_id: int, tag_title: str,
                 tag_id = tag_id_row[0]
 
                 # Удаление тега из события
-                cursor.execute("DELETE FROM events_tags WHERE event_id=%s AND tag_id=%s RETURNING *",
+                cursor.execute("UPDATE events_tags SET is_deleted = True WHERE event_id=%s AND tag_id=%s RETURNING *",
                                (event_id, tag_id))
                 deleted_tag = cursor.fetchone()
 
@@ -501,7 +539,10 @@ def delete_tag_from_the_event(event_id: int, tag_title: str,
 
                 # Получение всех оставшихся тегов для события
                 cursor.execute(
-                    "SELECT t.title FROM tags t JOIN events_tags et ON t.id = et.tag_id WHERE et.event_id=%s",
+                    "SELECT t.title FROM "
+                    "tags t JOIN events_tags et "
+                    "ON t.id = et.tag_id "
+                    "WHERE et.event_id=%s AND et.is_deleted=False",
                     (event_id,))
                 tags_data = cursor.fetchall()
 
@@ -530,7 +571,7 @@ def delete_image_from_the_event(event_id: int, image_id: int,
 
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM events_images WHERE id=%s AND event_id=%s RETURNING *",
+                cursor.execute("UPDATE events_images SET is_deleted=True WHERE id=%s AND event_id=%s RETURNING *",
                                (image_id, event_id))
                 event_images = cursor.fetchone()
 
