@@ -55,114 +55,126 @@
     </style>
 </head>
 <body>
-<header class="bg-primary text-white text-center py-3">
-    <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle">
-</header>
-<div class="container mt-5">
-    <div class="registration-form mx-auto" style="max-width: 400px;">
-        <div class="form-header text-center mb-4">
-            <h2>Регистрация</h2>
-        </div>
-        <form id="registration-form">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="Введите email" required>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle">
+    </header>
+    <div class="container mt-5">
+        <div class="registration-form mx-auto" style="max-width: 400px;">
+            <div class="form-header text-center mb-4">
+                <h2>Регистрация</h2>
             </div>
-            <div class="form-group">
-                <label for="password">Пароль</label>
-                <input type="password" class="form-control" id="password" placeholder="Пароль" required>
+            <form id="registration-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control" id="email" placeholder="Введите email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" class="form-control" id="password" placeholder="Пароль" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Подтвердите пароль</label>
+                    <input type="password" class="form-control" id="confirm-password" placeholder="Подтвердите пароль" required>
+                </div>
+                <div class="form-group">
+                    <label for="name">Имя</label>
+                    <input type="text" class="form-control" id="name" placeholder="Введите ваше имя" required>
+                </div>
+                <div class="form-group">
+                    <label for="city">Город</label>
+                    <select class="form-control" id="city" required>
+                        <option value="" disabled selected>Выберите ваш город</option>
+                        <option value="Ярославль">Ярославль</option>
+                        <option value="Санкт-Петербург">Санкт-Петербург</option>
+                        <option value="Тюмень">Тюмень</option>
+                        <option value="Уфа">Уфа</option>
+                        <option value="Новосибирск">Новосибирск</option>
+                        <option value="Казань">Казань</option>
+                        <option value="Екатеринбург">Екатеринбург</option>
+                        <option value="Севастополь">Севастополь</option>
+                        <option value="Рыбинск">Рыбинск</option>
+                        <option value="Кострома">Кострома</option>
+                        <option value="Калининград">Калининград</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="birthday">Дата рождения</label>
+                    <input type="date" class="form-control" id="birthday" required>
+                </div>
+                <div class="form-group">
+                    <label for="position">Должность</label>
+                    <input type="text" class="form-control" id="position" placeholder="Введите вашу должность" required>
+                </div>
+                <div class="form-group">
+                    <label for="height">Рост</label>
+                    <input type="number" class="form-control" id="height" placeholder="Введите ваш рост" required>
+                </div>
+                <div class="form-group">
+                    <label for="gender_id">Пол</label>
+                    <select class="form-control" id="gender_id" required>
+                        <option value="" disabled selected>Выберите пол</option>
+                        <option value="1">Мужской</option>
+                        <option value="2">Женский</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="target_id">Цель</label>
+                    <select class="form-control" id="target_id" required>
+                        <option value="" disabled selected>Выберите цель общения</option>
+                        <option value="1">Отношения</option>
+                        <option value="2">Дружба</option>
+                        <option value="3">Нетворкинг</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="communication_id">Способ общения</label>
+                    <select class="form-control" id="communication_id" required>
+                        <option value="" disabled selected>Выберите способ общения</option>
+                        <option value="1">Много переписываюсь</option>
+                        <option value="2">Не люблю чатиться</option>
+                        <option value="3">Люблю видеочаты</option>
+                        <option value="4">Общаюсь по телефону</option>
+                        <option value="5">Лучше встречусь лично</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
+            </form>
+            <div class="text-center mt-3">
+                <p class="text-muted small"><a href="login.html">Уже есть аккаунт? Войти.</a></p>
             </div>
-            <div class="form-group">
-                <label for="confirm-password">Подтвердите пароль</label>
-                <input type="password" class="form-control" id="confirm-password" placeholder="Подтвердите пароль"
-                       required>
-            </div>
-            <div class="form-group">
-                <label for="name">Имя</label>
-                <input type="text" class="form-control" id="name" placeholder="Введите ваше имя" required>
-            </div>
-            <div class="form-group">
-                <label for="city">Город</label>
-                <input type="text" class="form-control" id="city" placeholder="Введите ваш город" required>
-            </div>
-            <div class="form-group">
-                <label for="birthday">Дата рождения</label>
-                <input type="date" class="form-control" id="birthday" required>
-            </div>
-            <div class="form-group">
-                <label for="position">Должность</label>
-                <input type="text" class="form-control" id="position" placeholder="Введите вашу должность" required>
-            </div>
-            <div class="form-group">
-                <label for="height">Рост</label>
-                <input type="number" class="form-control" id="height" placeholder="Введите ваш рост" required>
-            </div>
-            <div class="form-group">
-                <label for="gender_id">Пол</label>
-                <select class="form-control" id="gender_id" required>
-                    <option value="" disabled selected>Выберите пол</option>
-                    <option value="1">Мужской</option>
-                    <option value="2">Женский</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="target_id">Цель</label>
-                <select class="form-control" id="target_id" required>
-                    <option value="" disabled selected>Выберите цель общения</option>
-                    <option value="1">Отношения</option>
-                    <option value="2">Дружба</option>
-                    <option value="3">Нетворкинг</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="communication_id">Способ общения</label>
-                <select class="form-control" id="communication_id" required>
-                    <option value="" disabled selected>Выберите способ общения</option>
-                    <option value="1">Много переписываюсь</option>
-                    <option value="2">Не люблю чатиться</option>
-                    <option value="3">Люблю видеочаты</option>
-                    <option value="4">Общаюсь по телефону</option>
-                    <option value="5">Лучше встречусь лично</option>
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
-        </form>
-        <div class="text-center mt-3">
-            <p class="text-muted small"><a href="login.html">Уже есть аккаунт? Войти.</a></p>
         </div>
     </div>
-</div>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<script>
-    document.getElementById('registration-form').addEventListener('submit', function (event) {
-        event.preventDefault();
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('registration-form').addEventListener('submit', function(event) {
+            event.preventDefault();
 
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
-        const name = document.getElementById('name').value;
-        const city = document.getElementById('city').value;
-        const birthday = document.getElementById('birthday').value;
-        const position = document.getElementById('position').value;
-        const height = document.getElementById('height').value;
-        const gender_id = document.getElementById('gender_id').value;
-        const target_id = document.getElementById('target_id').value;
-        const communication_id = document.getElementById('communication_id').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const name = document.getElementById('name').value;
+            const city = document.getElementById('city').value;
+            const birthday = document.getElementById('birthday').value;
+            const position = document.getElementById('position').value;
+            const height = document.getElementById('height').value;
+            const gender_id = document.getElementById('gender_id').value;
+            const target_id = document.getElementById('target_id').value;
+            const communication_id = document.getElementById('communication_id').value;
 
-        if (password !== confirmPassword) {
-            alert('Пароли не совпадают.');
-            return;
-        }
+            if (password !== confirmPassword) {
+                alert('Пароли не совпадают.');
+                return;
+            }
 
-        const url = `http://195.133.201.168:8000/authorization/register/?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}&birthday=${encodeURIComponent(birthday)}&position=${encodeURIComponent(position)}&height=${encodeURIComponent(height)}&gender_id=${encodeURIComponent(gender_id)}&target_id=${encodeURIComponent(target_id)}&communication_id=${encodeURIComponent(communication_id)}`;
+            const url = `http://195.133.201.168:8000/authorization/register/?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}&birthday=${encodeURIComponent(birthday)}&position=${encodeURIComponent(position)}&height=${encodeURIComponent(height)}&gender_id=${encodeURIComponent(gender_id)}&target_id=${encodeURIComponent(target_id)}&communication_id=${encodeURIComponent(communication_id)}`;
 
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        })
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok ' + response.statusText);
@@ -177,7 +189,7 @@
                 console.error('Error:', error);
                 alert('Произошла ошибка при регистрации.');
             });
-    });
-</script>
+        });
+    </script>
 </body>
 </html>
