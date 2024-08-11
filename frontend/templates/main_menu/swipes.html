@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Свайпы</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 1000px;
+        }
+        .tag {
+            display: inline-block;
+            margin: 5px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            background-color: #e0e0e0;
+        }
+        .card {
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            position: absolute;
+            width: 100%;
+        }
+        .swipe-left {
+            transform: translateX(-100%) rotate(-15deg);
+            opacity: 0;
+        }
+        .swipe-right {
+            transform: translateX(100%) rotate(15deg);
+            opacity: 0;
+        }
+        .card-container {
+            position: relative;
+            height: 400px;
+        }
+        .end-message {
+            font-size: 24px;
+            color: #28a745;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="../logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="row">
+            <nav class="col-md-2">
+                <div class="list-group">
+                    <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
+                    <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
+                    <a href="swipes.html" class="list-group-item list-group-item-action active">Свайпы</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
+                </div>
+            </nav>
+            <main class="col-md-8">
+                <div class="bg-white p-4 rounded shadow-sm text-center">
+                    <h2 class="text-primary mb-4">Свайпы</h2>
+                    <div class="card-container" id="cardContainer">
+                        <!-- Карточки будут динамически добавляться сюда -->
+                    </div>
+                    <div id="endMessage" class="end-message" style="display: none;">
+                        На этом на сегодня все!
+                    </div>
+                </div>
+            </main>
+            <div class="col-md-2">
+            </div>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        let currentUserIndex = 0;
+        let users = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+        });
+
+        function swipeLeft() {
+            const userId = users[currentUserIndex - 1];
+            dislikeUser(userId);
+            swipe('swipe-left');
+        }
+
+        async function swipeRight() {
+            const userId = users[currentUserIndex - 1];
+            const currentUserId = await getCurrentUserId(); // Получаем текущий ID пользователя
+            likeUser(userId, currentUserId);
+            swipe('swipe-right');
+        }
+
+        function swipe(direction) {
+            const card = document.querySelector('.card-container .card:last-child');
+            card.classList.add(direction);
+            setTimeout(() => {
+                card.remove();
+                showNextUser();
+            }, 500);
+        }
+
+        function loadUsers() {
+            const token = localStorage.getItem('access_token');
+
+            if (!token) {
+                alert('Необходима авторизация');
+                window.location.href = '../login/login.html';
+                return;
+            }
+
+            fetch('http://195.133.201.168:8000/algorithm/list_questionnaires/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Не удалось получить список пользователей');
+                }
+                return response.json();
+            })
+            .then(data => {
+                users = data; // Сохраняем список пользователей
+                if (users.length > 0) {
+                    showNextUser();
+                } else {
+                    alert('Нет пользователей для отображения');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+            });
+        }
+
+        function showNextUser() {
+            if (currentUserIndex >= users.length) {
+                document.getElementById('endMessage').style.display = 'block'; // Показать сообщение, если пользователи закончились
+                return;
+            }
+            const userId = users[currentUserIndex];
+            fetchUserInfo(userId);
+            currentUserIndex++;
+        }
+
+        async function fetchUserInfo(userId) {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`http://195.133.201.168:8000/algorithm/all_info/${userId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Не удалось получить данные пользователя');
+                }
+
+                const data = await response.json();
+                createCard(data);
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        function createCard(data) {
+            const cardContainer = document.getElementById('cardContainer');
+            const userInfo = data["Information about user"];
+            const userPhotos = data["All photos"];
+            const userInterests = data["All interests"];
+
+            const card = document.createElement('div');
+            card.className = 'card mb-3';
+
+            card.innerHTML = `
+                <div class="card-body text-center">
+                    <h5 class="card-title">${userInfo[0] || 'null'}</h5>
+                    <p class="card-text">Возраст: ${userInfo[2] || 'null'} лет</p>
+                    <div class="tags mb-3">
+                        ${userInterests.map(interest => `<span class="tag">${interest}</span>`).join('') || 'null'}
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Свайпы">
+                        <button type="button" class="btn btn-danger" onclick="swipeLeft()">Дизлайк</button>
+                        <button type="button" class="btn btn-success" onclick="swipeRight()">Лайк</button>
+                    </div>
+                </div>
+            `;
+
+            cardContainer.appendChild(card);
+        }
+
+        async function getCurrentUserId() {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch('http://195.133.201.168:8000/authorization/get_current_user', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Не удалось получить ID текущего пользователя');
+                }
+
+                const data = await response.json();
+                return data.id;
+            } catch (error) {
+                console.error('Ошибка при получении ID пользователя:', error);
+            }
+        }
+
+        async function likeUser(userId, currentUserId) {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`http://195.133.201.168:8000/algorithm/create_like/${userId}?user_like_from=${currentUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify([])  // Пустое тело запроса
+                });
+
+                if (!response.ok) {
+                    throw new Error('Не удалось сохранить лайк');
+                }
+
+                const data = await response.json();
+                console.log('Лайк успешно сохранен:', data);
+            } catch (error) {
+                console.error('Ошибка при сохранении лайка:', error);
+            }
+        }
+
+        async function dislikeUser(userId) {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`http://195.133.201.168:8000/algorithm/create_dislike/${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify([])  // Пустое тело запроса
+                });
+
+                if (!response.ok) {
+                    throw new Error('Не удалось сохранить дизлайк');
+                }
+
+                const data = await response.json();
+                console.log('Дизлайк успешно сохранен:', data);
+            } catch (error) {
+                console.error('Ошибка при сохранении дизлайка:', error);
+            }
+        }
+    </script>
+
+</body>
+</html>

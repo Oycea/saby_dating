@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница аккаунта</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.5.0/nouislider.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 1000px;
+        }
+
+        /* Стили для ползунков */
+        .noUi-handle {
+            background-color: #007bff;
+        }
+
+        .noUi-connect {
+            background-color: #007bff;
+        }
+
+        .noUi-horizontal .noUi-handle {
+            box-shadow: none;
+        }
+
+        /* Увеличение ширины модального окна и отступов */
+        .modal-dialog {
+            max-width: 600px;
+        }
+
+        .modal-content {
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+
+        .btn-group-toggle .btn {
+            margin-right: 5px;
+        }
+
+        /* Радио-кнопки в одну строку */
+        .form-group .radio-inline {
+            display: inline-block;
+            margin-right: 15px;
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="../logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="row">
+            <nav class="col-md-2">
+                <div class="list-group">
+                    <a href="profile.html" class="list-group-item list-group-item-action active">Аккаунт</a>
+                    <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
+                    <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
+                </div>
+            </nav>
+            <main class="col-md-8">
+                <div class="account-page bg-white p-4 rounded shadow-sm">
+                    <div class="form-header text-center mb-4">
+                        <h2 class="text-primary">Личный кабинет</h2>
+                    </div>
+                    <div class="account-info mb-4">
+                        <div class="text-center">
+                            <div>
+                                <img id="profile-image" class="rounded-circle" src="default-profile.png" alt="Фото профиля" style="width: 100px; height: 100px; object-fit: cover;">
+                            </div>
+                            <input type="file" id="upload-image" accept="image/*" style="display: none;">
+                            <button class="btn btn-primary" onclick="document.getElementById('upload-image').click()">Загрузить фото</button>
+                        </div>
+                        <h4 class="mb-3 mt-4">Информация о пользователе</h4>
+                        <ul class="list-group" id="user-info">
+                            <li class="list-group-item">Имя пользователя: <span id="user-name" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Email: <span id="user-email" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Город: <span id="user-city" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Дата рождения: <span id="user-birthday" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Роль в компании: <span id="user-position" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">Рост: <span id="user-height" class="font-weight-bold">Загрузка...</span></li>
+                            <li class="list-group-item">О себе: <span id="user-biography" class="font-weight-bold">Загрузка...</span></li>
+                        </ul>
+                    </div>
+                    <div class="account-actions">
+                        <a href="update_profile.html" class="btn btn-primary">Изменить профиль</a>
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#preferencesModal">Изменить предпочтения</button>
+                        <a href="../login/login.html" class="btn btn-danger" onclick="logout()">Выйти</a>
+
+                    </div>
+                </div>
+            </main>
+            <div class="col-md-2">
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal fade" id="preferencesModal" tabindex="-1" aria-labelledby="preferencesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="preferencesModalLabel">Фильтры поиска</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="/your-endpoint" method="GET">
+                        <div class="form-group">
+                            <label for="age-range">Возраст:</label>
+                            <div id="age-range"></div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <span>Мин: <input type="number" id="age-min" class="form-control" style="width: 70px;"></span>
+                                <span>Макс: <input type="number" id="age-max" class="form-control" style="width: 70px;"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="height-range">Рост:</label>
+                            <div id="height-range"></div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <span>Мин: <input type="number" id="height-min" class="form-control" style="width: 70px;"></span>
+                                <span>Макс: <input type="number" id="height-max" class="form-control" style="width: 70px;"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="target">Цель:</label>
+                            <div class="mt-2">
+                                <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                                    <label class="btn btn-outline-primary w-25">
+                                        <input type="radio" name="target" value="1" autocomplete="off"> Отношения
+                                    </label>
+                                    <label class="btn btn-outline-primary w-25">
+                                        <input type="radio" name="target" value="2" autocomplete="off"> Дружба
+                                    </label>
+                                    <label class="btn btn-outline-primary w-25">
+                                        <input type="radio" name="target" value="3" autocomplete="off"> Нетворкинг
+                                    </label>
+                                    <label class="btn btn-outline-primary w-25">
+                                        <input type="radio" name="target" value="Любая цель" autocomplete="off"> Любая цель
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="gender">Пол:</label>
+                            <div class="mt-2">
+                                <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                                    <label class="btn btn-outline-primary w-33.33">
+                                        <input type="radio" id="male" name="gender" value="1"> Мужчины
+                                    </label>
+                                    <label class="btn btn-outline-primary w-33.33">
+                                        <input type="radio" id="female" name="gender" value="2"> Женщины
+                                    </label>
+                                    <label class="btn btn-outline-primary w-33.33">
+                                        <input type="radio" id="any-gender" name="gender" value=""> Пол не важен
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="form-group">
+                            <label for="communication">Стиль общения:</label>
+                            <select id="communication" name="communication" class="form-control">
+                                <option value="1">Много переписываюсь</option>
+                                <option value="2">Не люблю чатиться</option>
+                                <option value="3">Люблю видеочаты</option>
+                                <option value="4">Общаюсь по телефону</option>
+                                <option value="5">Лучше встречусь лично</option>
+                                <option value="Не выбран">Не выбран</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="city">Город:</label>
+                            <input type="text" id="city" name="city" class="form-control">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
+                    <button type="submit" class="btn btn-primary">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.5.0/nouislider.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Инициализация ползунка для возраста
+            const ageSlider = document.getElementById('age-range');
+            const ageMin = document.getElementById('age-min');
+            const ageMax = document.getElementById('age-max');
+
+            noUiSlider.create(ageSlider, {
+                start: [0, 99], // Начальные значения
+                connect: true,
+                range: {
+                    'min': 0,
+                    'max': 99
+                },
+                step: 1
+            });
+
+            // Синхронизация ползунка и полей ввода для возраста
+            ageSlider.noUiSlider.on('update', function(values, handle) {
+                if (handle === 0) {
+                    ageMin.value = Math.round(values[0]);
+                } else {
+                    ageMax.value = Math.round(values[1]);
+                }
+            });
+
+            ageMin.addEventListener('input', function() {
+                ageSlider.noUiSlider.set([this.value, null]);
+            });
+
+            ageMax.addEventListener('input', function() {
+                ageSlider.noUiSlider.set([null, this.value]);
+            });
+
+            // Инициализация ползунка для роста
+            const heightSlider = document.getElementById('height-range');
+            const heightMin = document.getElementById('height-min');
+            const heightMax = document.getElementById('height-max');
+
+            noUiSlider.create(heightSlider, {
+                start: [0, 250], // Начальные значения
+                connect: true,
+                range: {
+                    'min': 0,
+                    'max': 250
+                },
+                step: 1
+            });
+
+            // Синхронизация ползунка и полей ввода для роста
+            heightSlider.noUiSlider.on('update', function(values, handle) {
+                if (handle === 0) {
+                    heightMin.value = Math.round(values[0]);
+                } else {
+                    heightMax.value = Math.round(values[1]);
+                }
+            });
+
+            heightMin.addEventListener('input', function() {
+                heightSlider.noUiSlider.set([this.value, null]);
+            });
+
+            heightMax.addEventListener('input', function() {
+                heightSlider.noUiSlider.set([null, this.value]);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const token = localStorage.getItem('access_token');
+            console.log('Токен:', token); // Проверка токена в консоли
+
+            if (!token) {
+                alert('Необходима авторизация');
+                window.location.href = '../login/login.html';
+                return;
+            }
+
+            fetch('http://195.133.201.168:8000/authorization/user/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Не удалось получить данные пользователя');
+                    window.location.href = '../login/login.html';
+                }
+                return response.json();
+            })
+            .then(data => {
+                //console.log('Данные пользователя:', data);
+                document.getElementById('user-name').innerText = data.name;
+                document.getElementById('user-email').innerText = data.email;
+                document.getElementById('user-city').innerText = data.city;
+                document.getElementById('user-birthday').innerText = new Date(data.birthday).toLocaleDateString();
+                document.getElementById('user-position').innerText = data.position;
+                document.getElementById('user-height').innerText = data.height;
+                document.getElementById('user-biography').innerText = data.biography;
+                if (data.profile_image) {
+                    document.getElementById('profile-image').src = data.profile_image;
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить информацию о пользователе');
+            });
+        });
+
+        function logout() {
+            console.log("Выход...");
+            localStorage.removeItem('access_token');
+        }
+
+        // Обработчик нажатия на кнопку "Применить"
+        document.querySelector('.modal-footer .btn-primary').addEventListener('click', function() {
+            const ageMin = document.getElementById('age-min').value;
+            const ageMax = document.getElementById('age-max').value;
+            const heightMin = document.getElementById('height-min').value;
+            const heightMax = document.getElementById('height-max').value;
+            const target = document.querySelector('input[name="target"]:checked')?.value;
+            const gender = document.querySelector('input[name="gender"]:checked')?.value;
+            const communication = document.getElementById('communication').value;
+            const city = document.getElementById('city').value;
+
+            // Собираем данные для запроса
+            const params = new URLSearchParams();
+
+            if (ageMin) params.append('age_min', ageMin);
+            if (ageMax) params.append('age_max', ageMax);
+            if (heightMin) params.append('height_min', heightMin);
+            if (heightMax) params.append('height_max', heightMax);
+            if (communication) params.append('communication_id', communication);
+            if (target && target !== "Любая цель") params.append('target_id', target);
+            if (gender) params.append('gender_id', gender);
+            if (city) params.append('city', city);
+
+            // Получаем токен из localStorage
+            const token = localStorage.getItem('access_token');
+
+            if (!token) {
+                alert('Необходима авторизация');
+                return;
+            }
+
+            // Отправляем PATCH-запрос
+            fetch(`http://195.133.201.168:8000/algorithm/patch_filters/?${params.toString()}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify([])  // Пустое тело запроса, как в примере cURL
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data['filters have been successfully updated for the user with the index']) {
+                    alert('Фильтры успешно обновлены');
+                    $('#preferencesModal').modal('hide');
+                } else {
+                    alert('Ошибка обновления фильтров');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось обновить фильтры');
+            });
+        });
+
+
+
+
+</script>
+
+
+</body>
+</html>

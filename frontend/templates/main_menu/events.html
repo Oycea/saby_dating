@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мероприятия</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            max-width: 1000px;
+        }
+        #events-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Две колонки одинаковой ширины */
+            gap: 10px; /* Расстояние между карточками по горизонтали и вертикали */
+        }
+        .card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid #ddd; /* Добавляем границу для визуального отделения карточек */
+            border-radius: 4px; /* Радиус границ для сглаживания углов */
+            overflow: hidden; /* Обрезаем содержимое карточки, чтобы не выходило за границы */
+        }
+        .card-body {
+            padding: 10px; /* Уменьшенный отступ внутри карточки */
+        }
+        .card-title {
+            font-size: 1rem; /* Уменьшенный размер шрифта заголовка */
+            margin-bottom: 8px;
+        }
+        .card-text {
+            font-size: 0.875rem; /* Уменьшенный размер шрифта текста */
+            margin-bottom: 0;
+        }
+        .card img {
+            max-height: 200px;
+            width: 100%; /* Ширина изображения занимает всю ширину карточки */
+            object-fit: cover; /* Изображение обрезается, чтобы сохранить пропорции */
+        }
+        .event-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-primary text-white text-center py-3">
+        <img src="../logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    </header>
+    <div class="container mt-5">
+        <div class="row">
+            <nav class="col-md-2">
+                <div class="list-group">
+                    <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
+                    <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
+                    <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
+                    <a href="events.html" class="list-group-item list-group-item-action active">Подборки</a>
+                </div>
+            </nav>
+            <main class="col-md-8">
+                <div class="bg-white p-4 rounded shadow-sm text-center">
+                    <h2 class="text-primary mb-4">Мероприятия</h2>
+                    <div id="events-container">
+                        <!-- Карточки мероприятий будут вставлены сюда -->
+                    </div>
+                </div>
+            </main>
+            <div class="col-md-2">
+            </div>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const targetUrl = 'http://195.133.201.168:8000/events/get_future_events';
+
+            fetch(proxyUrl + targetUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const events = data.events || [];
+                    const eventsContainer = document.getElementById('events-container');
+
+                    if (events.length === 0) {
+                        eventsContainer.innerHTML = '<p>Нет мероприятий для отображения.</p>';
+                        return;
+                    }
+
+                    events.forEach(event => {
+                        const { id, title, datetime, is_online } = event;
+
+                        // Создаем карточку мероприятия
+                        const eventCard = document.createElement('div');
+                        eventCard.className = 'card';
+
+                        // Форматируем дату (без времени)
+                        const eventDate = new Date(datetime).toLocaleDateString();
+
+                        // Добавляем основную информацию в карточку
+                        eventCard.innerHTML = `
+                            <div class="card-body">
+                                <h5 class="card-title">${title}</h5>
+                                <div class="event-info">
+                                    <span>${eventDate}</span>
+                                    <span>${is_online ? 'Онлайн' : ''}</span>
+                                </div>
+                            </div>
+                        `;
+
+                        // Получаем изображения для данного мероприятия
+                        fetch(proxyUrl + `http://195.133.201.168:8000/events/get_event_images/${id}`)
+                            .then(response => response.json())
+                            .then(images => {
+                                if (images.length > 0) {
+                                    // Если изображения есть, добавляем первое изображение в карточку
+                                    const img = document.createElement('img');
+                                    img.src = images[0];
+                                    img.className = 'card-img-bottom';
+                                    eventCard.appendChild(img);
+                                }
+                            })
+                            .catch(error => console.error('Error fetching images:', error));
+
+                        // Добавляем карточку в контейнер
+                        eventsContainer.appendChild(eventCard);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('events-container').innerHTML = `<p>Error fetching data: ${error.message}</p>`;
+                });
+        });
+    </script>
+</body>
+</html>

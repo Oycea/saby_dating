@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <title>Чат</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            margin: 0 200px 0 200px;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        .header {
+            background-color: #ee7e22;
+            padding: 10px;
+            font-size: 24px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-button {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            margin-right: auto;
+        }
+
+        .back-button:hover {
+            text-decoration: none;
+            color: white;
+        }
+
+        .user-name {
+            color: white;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .message-box {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 125px);
+            border: 1px solid #ccc;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 10px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+        }
+
+        .chat {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 50px 0;
+            margin-top: 60px;
+            margin-bottom: 10px;
+        }
+
+        .chat li {
+            padding: 0.5rem;
+            display: flex;
+        }
+
+        .chat .avatar {
+            width: 40px;
+            height: 40px;
+            position: relative;
+            display: block;
+            z-index: 2;
+            border-radius: 100%;
+        }
+
+        .chat .self .avatar img,
+        .chat .other .avatar img {
+            width: 40px;
+            height: 40px;
+            border-radius: 100%;
+        }
+
+        .other .msg {
+            order: 1;
+            border-top-left-radius: 0;
+            box-shadow: -1px 2px 0px #D4D4D4;
+        }
+
+        .other:before {
+            content: "";
+            position: relative;
+            top: 0;
+            right: 0;
+            left: 40px;
+            width: 0;
+            height: 0;
+            border: 5px solid #e5e5e5;
+            border-left-color: transparent;
+            border-bottom-color: transparent;
+        }
+
+        .self {
+            justify-content: flex-end;
+            align-items: flex-end;
+        }
+
+        .self .msg {
+            order: 1;
+            border-bottom-right-radius: 0;
+            box-shadow: 1px 2px 0px #D4D4D4;
+        }
+
+        .self .avatar {
+            order: 2;
+        }
+
+        .self .avatar:after {
+            content: "";
+            position: relative;
+            display: inline-block;
+            bottom: 17px;
+            right: 0;
+            width: 0;
+            height: 0;
+            border: 5px solid #e5e5e5;
+            border-right-color: transparent;
+            border-top-color: transparent;
+            box-shadow: 0px 2px 0px #D4D4D4;
+        }
+
+        .msg {
+            background: #e5e5e5;
+            min-width: 50px;
+            max-width: 50%;
+            padding: 10px;
+            border-radius: 2px;
+            box-shadow: 0px 2px 0px rgba(0, 0, 0, 0.07);
+            word-wrap: break-word;
+        }
+
+        .msg p {
+            font-size: 15px;
+            margin: 0 0 0.2rem 0;
+        }
+
+        .msg img {
+            position: relative;
+            display: block;
+            width: 450px;
+            border-radius: 5px;
+            box-shadow: 0px 0px 3px #eee;
+            transition: all .4s cubic-bezier(0.565, -0.260, 0.255, 1.410);
+        }
+
+        .msg time {
+            font-size: 0.7rem;
+            color: #ccc;
+            margin-top: 3px;
+            float: right;
+        }
+
+        input {
+            width: 100%;
+            height: 50px;
+            font-size: 15px;
+            padding: 10px;
+            border: none;
+            border-top: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .send-button {
+            max-width: 50px;
+            background-color: white;
+            border-left: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+<header class="bg-primary text-white text-center py-3">
+    <img src="../logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+</header>
+<div class="container">
+    <nav class="col-md-3">
+        <div class="list-group">
+            <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
+            <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
+            <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
+            <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
+        </div>
+    </nav>
+    <div class="content">
+        <div class="header" style="color: white; font-weight: bold">
+            <a href="dialogues.html" class="back-button"><i class="fas fa-arrow-left"></i></a>
+            <div class="user-name" id="user-name"></div>
+            <img src="" id="other-user-image" style="width: 40px; height: 40px; border-radius: 50%;">
+        </div>
+        <div class="message-box">
+            <div class="messages">
+                <ol id='messages' class="chat"></ol>
+            </div>
+            <form action="" onsubmit="sendMessage(event)" style="display: flex">
+                <input type="text" placeholder="Введите сообщение..." id="messageText" autocomplete="off"
+                       style="border-bottom-left-radius: 10px;">
+                <input type="submit" value="&#8594;" class="send-button" style="font-size: 18px;">
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {  // Отправка запроса к бекенду и запись данных
+        const urlParams = new URLSearchParams(window.location.search);
+        const dialogueId = urlParams.get('dialogue_id');
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        fetch(`http://195.133.201.168:8000/chat?dialogue_id=${dialogueId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Не удалось получить данные пользователя');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const messagesContainer = document.getElementById('messages');
+                const profileImage = data.profile_image;
+                const otherUserImage = data.other_user.profile_image;
+                const otherUserName = data.other_user.name;
+
+                document.getElementById('user-name').innerText = otherUserName;
+                document.getElementById('other-user-image').src = otherUserImage;
+
+                data.limited_result.reverse().forEach(message => {
+                    const li = document.createElement('li');
+
+                    if (message[0] === data.self_user.id) {
+                        li.classList.add('self');
+                        li.innerHTML = `
+                    <div class="avatar"><img src="${profileImage}" alt="Моё фото"/></div>
+                    <div class="msg">
+                        <p>${message[1]}</p>
+                        <time>${message[2]}</time>
+                    </div>
+                `;
+                    } else {
+                        li.classList.add('other');
+                        li.innerHTML = `
+                    <div class="avatar"><img src="${otherUserImage}" alt="Фото другого пользователя"/></div>
+                    <div class="msg">
+                        <p>${message[1]}</p>
+                        <time>${message[2]}</time>
+                    </div>
+                `;
+                    }
+                    messagesContainer.appendChild(li);
+                    const messagesContainerForScroll = document.querySelector('.messages');
+                    messagesContainerForScroll.scrollTop = messagesContainerForScroll.scrollHeight;
+                });
+                window.dialogueId = dialogueId;
+                window.profileImage = profileImage;
+                window.otherUserImage = otherUserImage;
+                window.selfUserId = data.self_user.id;
+                window.fullResultLen = data.full_result_len;
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить информацию о пользователе');
+                window.location.href = 'index.html';
+            });
+    });
+
+     let offset = 30; // Начальный индекс для загрузки сообщений
+    const limit = 30; // Кол-во сообщений для загрузки
+    let loadingMessages = false;
+
+    function loadMessages() {  // Ленивая загрузка
+        if (loadingMessages) return;
+        loadingMessages = true;
+        $.ajax({
+            type: "GET",
+            url: "http://195.133.201.168:8000/chat/load_messages",
+            data: {dialogue_id: dialogueId, offset: offset, limit: limit},
+            success: function (data) {
+                if (data.length > 0) {
+                    data.forEach(message => {
+                        var listItem = document.createElement('li');
+                        if (message[0] === selfUserId) {
+                            listItem.classList.add('self');
+                            listItem.innerHTML = `
+                            <div class="avatar"><img src="${profileImage}" alt="Моё фото"/></div>
+                            <div class="msg">
+                                <p>${message[1]}</p>
+                                <time>${message[2]}</time>
+                            </div>`;
+                        } else {
+                            listItem.classList.add('other');
+                            listItem.innerHTML = `
+                            <div class="avatar"><img src="${otherUserImage}" alt="Фото другого пользователя"/></div>
+                            <div class="msg">
+                                <p>${message[1]}</p>
+                                <time>${message[2]}</time>
+                            </div>`;
+                        }
+                        $("#messages").prepend(listItem);
+                    });
+                    offset += limit;
+                }
+            },
+            complete: function () {
+                loadingMessages = false;
+            }
+        });
+    }
+
+
+    const messagesContainer = document.querySelector('.messages');
+    messagesContainer.addEventListener('scroll', function () {
+        if (messagesContainer.scrollTop <= 150 && fullResultLen > offset) {
+            loadMessages();
+        }
+    });
+
+
+    let ws = new WebSocket(`ws://195.133.201.168:8000/chat/ws`);
+
+    ws.onmessage = function (event) { // Добавление нового сообщения в чат
+        var messages = document.getElementById('messages');
+        var data = JSON.parse(event.data);
+        var message = document.createElement('li');
+
+        if (data.userId === selfUserId) {
+            message.classList.add('self');
+            message.innerHTML = `
+                    <div class="avatar"><img src="${profileImage}"/></div>
+                    <div class="msg">
+                        <p>${data.message}</p>
+                        <time>${data.date}</time>
+                    </div>`;
+        } else {
+            message.classList.add('other');
+            message.innerHTML = `
+                    <div class="avatar"><img src="${otherUserImage}"/></div>
+                    <div class="msg">
+                        <p>${data.message}</p>
+                        <time>${data.date}</time>
+                    </div>`;
+        }
+
+        messages.appendChild(message);
+        offset += 1;
+        const messagesContainerForScroll = document.querySelector('.messages');
+        messagesContainerForScroll.scrollTop = messagesContainerForScroll.scrollHeight;
+
+    };
+
+
+    function sendMessage(event) { // Вызов Websocket
+        event.preventDefault();
+        let input = document.getElementById("messageText");
+
+        const messageData = {
+            userId: selfUserId,
+            message: input.value,
+            dialogue_id: dialogueId
+        };
+
+        ws.send(JSON.stringify(messageData));
+        input.value = '';
+    }
+</script>
+</body>
+</html>
