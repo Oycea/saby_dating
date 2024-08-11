@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request
 from passlib.hash import argon2
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -92,7 +92,7 @@ def send_message(email: str, subject: str, body: str):
 
 def send_message_pass_reset(email: str):
     token = create_token(email)
-    reset_password_url = f"http://195.133.201.168:80/change_password.html?{token}"
+    reset_password_url = f"http://195.133.201.168:80/login/change_password.html?{token}"
     body = f"Ссылка для сброса пароля: {reset_password_url}"
     subject = 'Смена пароля'
     send_message(email, subject, body)
@@ -100,7 +100,7 @@ def send_message_pass_reset(email: str):
 
 
 def send_message_email_verification(email: str, token: str):
-    confirm_registration_url = f"http://195.133.201.168:80/registration_complete.html?{token}"
+    confirm_registration_url = f"http://195.133.201.168:80/registration_steps/registration_complete.html?{token}"
     body = f"Ссылка для подтверждения регистрации: {confirm_registration_url}"
     subject = 'Подтверждение регистрации'
     send_message(email, subject, body)
@@ -114,15 +114,17 @@ log_file_path = os.path.join(log_directory, 'app.log')
 
 # логгирование
 class IPFilter(logging.Filter):
+    def __init__(self, request: Request):
+        super().__init__()
+        self.request = request
+
     def filter(self, record):
         record.ip_address = self.get_ip_address()
         return True
 
     def get_ip_address(self):
-        try:
-            ip = socket.gethostbyname(socket.gethostname())
-        except Exception:
-            ip = 'Неизвестный IP'
+        # Прямое получение IP-адреса пользователя
+        ip = self.request.client.host
         return ip
 
 
@@ -133,11 +135,7 @@ class CustomFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging():
-    if not os.path.exists(log_directory):
-        os.makedirs(log_directory)
-
-    # Настройка обработчика и форматтера
+def setup_logging(request: Request):
     handler = logging.FileHandler(log_file_path)
     formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(ip_address)s')
     handler.setFormatter(formatter)
@@ -145,10 +143,7 @@ def setup_logging():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
-    logger.addFilter(IPFilter())
-
-    logging.getLogger('apscheduler').setLevel(logging.CRITICAL)
-    logging.getLogger('apscheduler.scheduler').setLevel(logging.CRITICAL)
+    logger.addFilter(IPFilter(request))
 
     return logger
 
