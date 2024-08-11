@@ -1,84 +1,24 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Страница входа</title>
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>Title</title>
 </head>
 <body>
-    <header class="bg-primary text-white text-center py-3">
-        <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
-    </header>
-    <div class="container mt-5">
-        <div class="login-form bg-white p-4 rounded shadow-sm mx-auto" style="max-width: 400px;">
-            <div class="form-header text-center mb-4">
-                <h2 class="text-primary">Вход</h2>
-            </div>
-            <form id="login-form" autocomplete="off">
-                <div class="form-group">
-                    <label for="username">Имя пользователя</label>
-                    <input type="text" class="form-control" id="username" placeholder="Введите имя пользователя" autocomplete="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Пароль</label>
-                    <input type="password" class="form-control" id="password" placeholder="Пароль" autocomplete="current-password" required>
-                </div>
-                <div id="error-message" class="text-danger mb-3" style="display: none;"></div>
-                <button type="submit" class="btn btn-primary btn-block">Войти</button>
-            </form>
-            <div class="text-center mt-3">
-                <p class="text-muted small"><a href="registration.html" class="text-muted text-decoration-underline">Нет аккаунта? Зарегистрируйтесь.</a></p>
-            </div>
-            <div class="text-center mt-3">
-                <p class="text-muted small"><a href="password_reset.html" class="text-muted text-decoration-underline">Забыли пароль?</a></p>
-            </div>
-        </div>
-    </div>
 
-    <script>
-        document.getElementById('login-form').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Предотвращаем отправку формы
+<script>
+  // Проверяем наличие access_token в local storage
+  const accessToken = localStorage.getItem('access_token');
 
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+   setTimeout(() => {
+     const accessToken = localStorage.getItem('access_token');
+     if (accessToken) {
+       window.location.href = 'main_menu/profile.html';
+     } else {
+       window.location.href = 'login/login.html';
+     }
+   }, 100); // Задержка в 100 миллисекунд
 
-            const data = new URLSearchParams();
-            data.append('grant_type', 'password');
-            data.append('username', username);
-            data.append('password', password);
-            data.append('scope', '');
-            data.append('client_id', 'string'); // Замените на ваш client_id
-            data.append('client_secret', 'string'); // Замените на ваш client_secret
-
-            try {
-                const response = await fetch('http://195.133.201.168:8000/authorization/login', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: data.toString()
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log('Успешный вход:', result);
-
-                    localStorage.setItem('access_token', result.access_token); // Сохраняем токен в localStorage
-
-                    window.location.href = 'profile.html';
-                } else {
-                    const errorData = await response.json();
-                    document.getElementById('error-message').innerText = errorData.detail || 'Ошибка авторизации';
-                    document.getElementById('error-message').style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Ошибка:', error);
-                document.getElementById('error-message').innerText = 'Сетевая ошибка. Попробуйте позже.';
-                document.getElementById('error-message').style.display = 'block';
-            }
-        });
-    </script>
+</script>
 </body>
 </html>
