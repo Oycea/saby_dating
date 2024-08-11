@@ -19,7 +19,7 @@ def get_all_users() -> list[dict]:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("SELECT * FROM users WHERE is_deletes = true")
+                cursor.execute("SELECT * FROM users")
                 users = cursor.fetchall()
                 if not users:
                     raise HTTPException(status_code=404, detail="Users not found")
@@ -82,11 +82,11 @@ def find_matches(current_user: User = Depends(get_current_user)) -> list[int]:
 
 
 @algorithm_router.post('/create_like/{user_like_to}', name='Create like')  # Сделать проверку на существование диалога
-def create_like(user_like_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
+def create_like(user_like_to: int, user_like_from:int) -> dict[str, int | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                user_like_from = current_user.id
+                #user_like_from = current_user.id
                 cursor.execute(
                     "INSERT INTO likes (user_id_from, user_id_to, created_at) VALUES(%s, %s, NOW()::timestamp) "
                     "RETURNING *",
@@ -97,6 +97,8 @@ def create_like(user_like_to: int, current_user: User = Depends(get_current_user
                 cursor.execute("SELECT * FROM likes WHERE user_id_from = %s AND user_id_to = %s",
                                (user_like_to, user_like_from,))
                 new_match = cursor.fetchall()
+                print(new_match)
+                print(new_likes)
                 if new_match:
                     cursor.execute(
                         "SELECT * FROM dialogues WHERE ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND "
@@ -115,13 +117,13 @@ def create_like(user_like_to: int, current_user: User = Depends(get_current_user
 
 
 @algorithm_router.post('/create_dislike/{user_dislike_to}', name='Create dislike')
-def create_dislike(user_dislike_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
+def create_dislike(user_dislike_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_dislike_from = current_user.id
                 cursor.execute(
-                    "INSERT INTO dislikes (user_id_from, user_id_to, create_at) VALUES(%s, %s, NOW()::timestamp) "
+                    "INSERT INTO dislikes (user_id_from, user_id_to, created_at) VALUES(%s, %s, NOW()::timestamp) "
                     "RETURNING *",
                     (user_dislike_from, user_dislike_to))
                 new_dislikes = cursor.fetchone()
