@@ -80,17 +80,66 @@ def check_password(password: str) -> None:
     if len(password) < 8 or len(password) > 16:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать не менее 8 и не более 16 символов"
+            detail="Пароль должен содержать не менее 8 и не более 16 символов."
         )
     if not any(symbol.isalpha() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать хотя бы одну букву"
+            detail="Пароль должен содержать хотя бы одну букву."
         )
     if not any(symbol.isdigit() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать хотя бы одну цифру"
+            detail="Пароль должен содержать хотя бы одну цифру."
+        )
+
+
+def check_username(name: str):
+    if len(name) < 2 or len(name) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Имя должно содержать от 2 до 50 символов."
+        )
+
+
+def check_birthday(birthday: date):
+    today = date.today()
+    age = today.year - birthday.year - (
+                (today.month, today.day) < (birthday.month, birthday.day))
+    if age < 18:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Возраст пользователя должен быть не менее 18 лет."
+        )
+
+    if birthday > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Дата рождения не может быть в будущем."
+        )
+
+
+def check_position(position: str):
+    if len(position) < 2 or len(position) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Должность должна содержать от 2 до 100 символов."
+        )
+
+
+def check_height(height: int):
+    if height < 50 or height > 300:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Рост должен быть в диапазоне от 50 до 300 см."
+        )
+
+
+def check_biography(biography: Optional[str]):
+    if biography and len(biography) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Информация о себе не должна превышать 500 символов. "
         )
 
 
@@ -226,7 +275,10 @@ def get_interests() -> List[Interest]:
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
         )
 
+
 temp_storage = {}
+
+
 @authorization_router.post('/register/', status_code=status.HTTP_200_OK,
                            name='Регистрация нового пользователя')
 def register(email: EmailStr, password: str, name: str, city: str,
@@ -253,15 +305,21 @@ def register(email: EmailStr, password: str, name: str, city: str,
     """
     try:
         # Проверка корректности email
-        validated_email = validate_email(email)
-        email = validated_email.email
-    except EmailNotValidError as ex:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Неверный адрес электронной почты: {str(ex)}"
-        )
-    check_password(password)
-    try:
+        try:
+            validated_email = validate_email(email)
+            email = validated_email.email
+        except EmailNotValidError as ex:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Неверный адрес электронной почты: {str(ex)}"
+            )
+        check_password(password)
+        check_username(name)
+        check_birthday(birthday)
+        check_position(position)
+        check_height(height)
+        check_biography(biography)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 # Проверка email
@@ -467,6 +525,27 @@ def update_profile(
     :raises HTTPException: Если пользователь не найден или возникла внутренняя ошибка сервера.
     """
     try:
+        if email:
+            try:
+                validated_email = validate_email(email)
+                email = validated_email.email
+            except EmailNotValidError as ex:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Неверный адрес электронной почты: {str(ex)}"
+                )
+
+            if name:
+                check_username(name)
+            if birthday:
+                check_birthday(birthday)
+            if position:
+                check_position(position)
+            if height:
+                check_height(height)
+            if biography:
+                check_biography(biography)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
