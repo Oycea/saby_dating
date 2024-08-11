@@ -15,7 +15,7 @@ algorithm_router = APIRouter(prefix='/algorithm', tags=['Algorithm'])
 
 
 @algorithm_router.get('/get_all_users/', name='Get all users')
-def get_all_users() -> list[dict]:
+def get_all_users() -> list:
     try:
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -29,7 +29,7 @@ def get_all_users() -> list[dict]:
 
 
 @algorithm_router.get('/get_likes/', name='Get likes from user by user_id')
-def get_likes(current_user: User = Depends(get_current_user)) -> list[dict]:
+def get_likes(current_user: User = Depends(get_current_user)) -> list:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -47,7 +47,7 @@ def get_likes(current_user: User = Depends(get_current_user)) -> list[dict]:
 
 
 @algorithm_router.get('/get_dislikes/', name='Get dislikes from user by user_id')
-def get_dislikes(current_user: User = Depends(get_current_user)) -> list[int]:
+def get_dislikes(current_user: User = Depends(get_current_user)) -> list:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -82,7 +82,7 @@ def find_matches(current_user: User = Depends(get_current_user)) -> list[int]:
 
 
 @algorithm_router.post('/create_like/{user_like_to}', name='Create like')  # Сделать проверку на существование диалога
-def create_like(user_like_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list]:
+def create_like(user_like_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list[int]]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
@@ -366,7 +366,7 @@ def search_events(title: Optional[str] = None, place: Optional[str] = None, is_o
         raise HTTPException(status_code=500, detail=str(ex))
 
 
-@algorithm_router.get('/search_dialog/', name="search dialog by name")  # Добавить в pages
+@algorithm_router.get('/search_dialog/{name_second_user}', name="search dialog by name")  # Добавить в pages
 def search_dialog(name_second_user: str, current_user: User = Depends(get_current_user)) -> dict[str, list[int]]:
     try:
         with open_conn() as connection:
@@ -374,12 +374,12 @@ def search_dialog(name_second_user: str, current_user: User = Depends(get_curren
                 main_user_id = current_user.id
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user2_id = users.id "
-                               "WHERE (dialogues.user1_id = %s AND users.name = %s  AND is_deleted = false ) ",
+                               "WHERE (dialogues.user1_id = %s AND users.name = %s  AND dialogues.is_deleted = false ) ",
                                (main_user_id, name_second_user,))
                 find_dialog = cursor.fetchall()
                 cursor.execute("SELECT dialogues.id "
                                "FROM dialogues JOIN users ON dialogues.user1_id = users.id "
-                               "WHERE (dialogues.user2_id = %s AND users.name = %s  AND is_deleted = false ) ",
+                               "WHERE (dialogues.user2_id = %s AND users.name = %s  AND dialogues.is_deleted = false ) ",
                                (main_user_id, name_second_user,))
                 find_dialog = find_dialog + cursor.fetchall()
                 find_dialog = [dialog[0] for dialog in find_dialog]
