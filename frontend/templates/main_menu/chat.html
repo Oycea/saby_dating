@@ -213,7 +213,7 @@
     </nav>
     <div class="content">
         <div class="header" style="color: white; font-weight: bold">
-            <a href="dialogues.html" class="back-button"><i class="fas fa-arrow-left"></i></a>
+            <a href="dialogs.html" class="back-button"><i class="fas fa-arrow-left"></i></a>
             <div class="user-name" id="user-name"></div>
             <img src="" id="other-user-image" style="width: 40px; height: 40px; border-radius: 50%;">
         </div>
@@ -238,7 +238,7 @@
 
         if (!token) {
             alert('Необходима авторизация');
-            window.location.href = 'index.html';
+            window.location.href = '../index.html';
             return;
         }
 
@@ -299,11 +299,11 @@
             .catch(error => {
                 console.error('Ошибка:', error);
                 alert('Не удалось загрузить информацию о пользователе');
-                window.location.href = 'index.html';
+                window.location.href = '../index.html';
             });
     });
 
-     let offset = 30; // Начальный индекс для загрузки сообщений
+    let offset = 30; // Начальный индекс для загрузки сообщений
     const limit = 30; // Кол-во сообщений для загрузки
     let loadingMessages = false;
 
