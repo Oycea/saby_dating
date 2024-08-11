@@ -9,6 +9,7 @@
         body {
             font-family: Arial, sans-serif;
         }
+
         .message-container {
             margin-top: 50px;
             text-align: center;
@@ -16,45 +17,48 @@
     </style>
 </head>
 <body>
-    <header class="bg-primary text-white text-center py-3">
-        <h1>Регистрация</h1>
-    </header>
-    <div class="container message-container">
-        <div id="alert-container" class="d-none">
-            <div class="alert alert-success" role="alert" id="success-message">
-                Ваша регистрация прошла успешно! Подтвердите свой адрес электронной почты.
-            </div>
-        </div>
-        <div id="error-container" class="d-none">
-            <div class="alert alert-danger" role="alert">
-                Ошибка при подтверждении регистрации. Токен не найден или недействителен.
-            </div>
-        </div>
-        <div class="text-center mt-3">
-            <p class="text-muted small"><a href="index.html" class="text-muted text-decoration-underline">Вернуться к
-                авторизации</a></p>
+<header class="bg-primary text-white text-center py-3">
+    <h1>Регистрация</h1>
+</header>
+<div class="container message-container">
+    <div id="alert-container" class="d-none">
+        <div class="alert alert-success" role="alert" id="success-message">
+            Ваша регистрация прошла успешно! Подтвердите свой адрес электронной почты.
         </div>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const currentUrl = window.location.href;
-            const token = currentUrl.split('?')[1];
+    <div id="error-container" class="d-none">
+        <div class="alert alert-danger" role="alert">
+            Ошибка при подтверждении регистрации. Токен не найден или недействителен.
+        </div>
+    </div>
+    <div class="text-center mt-3">
+        <p class="text-muted small"><a href="index.html" class="text-muted text-decoration-underline">Вернуться к
+            авторизации</a></p>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const currentUrl = window.location.href;
+        const token = currentUrl.split('?')[1];
 
-            if (token) {
-                fetch(`http://195.133.201.168:8000/authorization/confirm/${token}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
+        if (token) {
+            console.log('Токен найден:', token);
+            fetch(`http://195.133.201.168:8000/authorization/confirm/${token}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
                 .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        return response.text().then(text => {
-                            throw new Error(text);
-                        });
-                    }
+                    return new Promise((resolve, reject) => {
+                        setTimeout(() => {
+                            if (response.ok) {
+                                resolve(response.json());
+                            } else {
+                                response.text().then(text => reject(new Error(text)));
+                            }
+                        }, 1500);
+                    });
                 })
                 .then(data => {
                     console.log('Успешно подтверждено:', data);
@@ -65,11 +69,11 @@
                     console.error('Ошибка:', error);
                     document.getElementById('error-container').classList.remove('d-none');
                 });
-            } else {
-                console.error('Токен не найден в URL.');
-                document.getElementById('error-container').classList.remove('d-none');
-            }
-        });
-    </script>
+        } else {
+            console.error('Токен не найден в URL.');
+            document.getElementById('error-container').classList.remove('d-none');
+        }
+    });
+</script>
 </body>
 </html>
