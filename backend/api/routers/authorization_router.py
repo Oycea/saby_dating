@@ -70,17 +70,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def check_password(password: str) -> None:
     """
     Проверяет пароль на соответствие требованиям:
-    - Пароль содержит не менее 8 символов.
+    - Пароль содержит не менее 8 и не более 16 символов.
     - В пароле содержится хотя бы одна цифра.
     - В пароле содержится хотя бы одна буква.
 
     :param password: Проверяемый пароль.
     :raises HTTPException: При несоответствии пароля требованиям.
     """
-    if len(password) < 8:
+    if len(password) < 8 or len(password) > 16:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать не менее 8 символов"
+            detail="Пароль должен содержать не менее 8 и не более 16 символов"
         )
     if not any(symbol.isalpha() for symbol in password):
         raise HTTPException(
