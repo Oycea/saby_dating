@@ -82,11 +82,11 @@ def find_matches(current_user: User = Depends(get_current_user)) -> list[int]:
 
 
 @algorithm_router.post('/create_like/{user_like_to}', name='Create like')  # Сделать проверку на существование диалога
-def create_like(user_like_to: int, user_like_from:int) -> dict[str, int | list]:
+def create_like(user_like_to: int, current_user: User = Depends(get_current_user)) -> dict[str, int | list]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                #user_like_from = current_user.id
+                user_like_from = current_user.id
                 cursor.execute(
                     "INSERT INTO likes (user_id_from, user_id_to, created_at) VALUES(%s, %s, NOW()::timestamp) "
                     "RETURNING *",
