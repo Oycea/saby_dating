@@ -34,9 +34,9 @@
             border-radius: 0;
         }
         .btn.active {
-            background-color: #007bff; /* Цвет фона для активной кнопки */
-            color: white; /* Цвет текста для активной кнопки */
-            border-color: #007bff; /* Цвет границы для активной кнопки */
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
         }
     </style>
 </head>
@@ -106,7 +106,7 @@
                         </div>
                         <div class="form-group">
                             <label for="target_id">Цель</label>
-                            <select class="form-control" id="target_id" required>
+                            <select class="form-control" id="target_id">
                                 <option value="" disabled selected>Выберите цель общения</option>
                                 <option value="1">Отношения</option>
                                 <option value="2">Дружба</option>
@@ -115,7 +115,7 @@
                         </div>
                         <div class="form-group">
                             <label for="communication_id">Способ общения</label>
-                            <select class="form-control" id="communication_id" required>
+                            <select class="form-control" id="communication_id">
                                 <option value="" disabled selected>Выберите способ общения</option>
                                 <option value="1">Много переписываюсь</option>
                                 <option value="2">Не люблю чатиться</option>
@@ -128,12 +128,6 @@
                             <label for="biography">О себе</label>
                             <textarea class="form-control" id="biography" rows="4" placeholder="Расскажите о себе..."></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="interests">Интересы</label>
-                            <div id="interests-container" class="btn-group btn-group-toggle w-100" data-toggle="buttons">
-                                <!-- Чекбоксы с интересами будут добавлены сюда динамически -->
-                            </div>
-                        </div>
                         <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
                     </form>
                     <div class="text-center mt-3">
@@ -144,75 +138,51 @@
         </div>
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const interestsFromServer = [
-                { id: 1, title: 'Футбол' },
-                { id: 2, title: 'Музыка' },
-                { id: 3, title: 'Чтение' },
-                { id: 4, title: 'Путешествия' },
-                { id: 5, title: 'Кулинария' },
-            ];
+        document.getElementById('edit-profile-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Предотвращаем обычное отправление формы
 
-            const interestsContainer = document.getElementById('interests-container');
+            // Получаем значения из полей формы
+            const name = document.getElementById('name').value || undefined;
+            const city = document.getElementById('city').value || undefined;
+            const birthday = document.getElementById('birthday').value || undefined;
+            const height = document.getElementById('height').value ? parseInt(document.getElementById('height').value) : undefined;
+            const gender_id = document.querySelector('input[name="gender_id"]:checked') ? parseInt(document.querySelector('input[name="gender_id"]:checked').value) : undefined;
+            const target_id = document.getElementById('target_id').value || undefined;
+            const communication_id = document.getElementById('communication_id').value || undefined;
+            const biography = document.getElementById('biography').value || undefined;
 
-            interestsFromServer.forEach(interest => {
-                const label = document.createElement('label');
-                label.className = 'btn btn-outline-primary';
-                label.innerHTML = `
-                    <input type="checkbox" value="${interest.id}" name="interests" style="display: none;">
-                    ${interest.title}
-                `;
-                label.addEventListener('click', function() {
-                    label.classList.toggle('active');
-                });
-                interestsContainer.appendChild(label);
-            });
+            // Создаем объект с данными для отправки
+            const data = {};
+            if (name) data.name = name;
+            if (city) data.city = city;
+            if (birthday) data.birthday = birthday;
+            if (height) data.height = height;
+            if (gender_id) data.gender_id = gender_id;
+            if (target_id) data.target_id = target_id;
+            if (communication_id) data.communication_id = communication_id;
+            if (biography) data.biography = biography;
 
-            const genderButtons = document.querySelectorAll('input[name="gender_id"]');
-            genderButtons.forEach(button => {
-                button.addEventListener('change', function() {
-                    genderButtons.forEach(btn => btn.parentElement.classList.remove('active'));
-                    this.parentElement.classList.add('active');
-                });
-            });
-
-            document.getElementById('edit-profile-form').addEventListener('submit', function(event) {
-                event.preventDefault();
-
-                const name = document.getElementById('name').value;
-                const position = document.getElementById('position').value;
-                const city = document.getElementById('city').value;
-                const birthday = document.getElementById('birthday').value;
-                const height = document.getElementById('height').value ? parseInt(document.getElementById('height').value) : undefined;
-                const gender_id = document.querySelector('input[name="gender_id"]:checked').value;
-                const target_id = document.getElementById('target_id').value ? parseInt(document.getElementById('target_id').value) : undefined;
-                const communication_id = document.getElementById('communication_id').value ? parseInt(document.getElementById('communication_id').value) : undefined;
-                const biography = document.getElementById('biography').value;
-
-                const selectedInterests = Array.from(document.querySelectorAll('input[name="interests"]:checked'))
-                    .map(checkbox => parseInt(checkbox.value));
-
-                const data = { name, position, city, birthday, height, gender_id, target_id, communication_id, biography, interests: selectedInterests };
-
-                fetch('http://195.133.201.168:8000/authorization/update_profile', {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    },
-                    body: JSON.stringify(data),
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Ошибка при обновлении профиля');
-                    return response.json();
-                })
-                .then(updatedUser => {
-                    alert('Профиль успешно обновлен');
-                    window.location.href = 'profile.html';
-                })
-                .catch(error => {
-                    alert('Не удалось обновить профиль: ' + error.message);
-                });
+            // Выполняем запрос на сервер
+            fetch('http://195.133.201.168:8000/authorization/update_profile', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Если необходимо передать токен
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при обновлении профиля');
+                }
+                return response.json();
+            })
+            .then(updatedUser => {
+                alert('Профиль успешно обновлен');
+                window.location.href = 'profile.html';
+            })
+            .catch(error => {
+                alert('Не удалось обновить профиль: ' + error.message);
             });
         });
     </script>
