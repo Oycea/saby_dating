@@ -335,29 +335,27 @@
 
                 data.limited_result.reverse().forEach(message => {
                     const li = document.createElement('li');
-
+                    
                     if (message[0] === data.self_user.id) {
                         li.classList.add('self');
                         li.innerHTML = `
-                    <div class="avatar"><img src="${profileImage}" alt="Моё фото"/></div>
-                    <div class="msg" data-id="${message[3]}">
-                        <p>${message[1]}</p>
-                        <time>${message[2]}</time>
-                        <i class="fas fa-times delete-icon" style="color: red;"></i>
-                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
-                    </div>
-                `;
+            <div class="avatar"><img src="${profileImage}" alt="Моё фото"/></div>
+            <div class="msg" data-id="${message[3]}">
+                <p>${message[1]}</p>
+                <time>${message[2]}</time>
+                <i class="fas fa-times delete-icon" style="color: red;"></i>
+                <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
+            </div>
+        `;
                     } else {
                         li.classList.add('other');
                         li.innerHTML = `
-                    <div class="avatar"><img src="${otherUserImage}" alt="Фото другого пользователя"/></div>
-                    <div class="msg" data-id="${message[3]}">
-                        <p>${message[1]}</p>
-                        <time>${message[2]}</time>
-                        <i class="fas fa-times delete-icon" style="color: red;"></i>
-                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
-                    </div>
-                `;
+            <div class="avatar"><img src="${otherUserImage}" alt="Фото другого пользователя"/></div>
+            <div class="msg" data-id="${message[3]}">
+                <p>${message[1]}</p>
+                <time>${message[2]}</time>
+            </div>
+        `;
                     }
                     messagesContainer.appendChild(li);
                     const messagesContainerForScroll = document.querySelector('.messages');
