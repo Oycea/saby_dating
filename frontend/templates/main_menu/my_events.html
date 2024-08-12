@@ -1,8 +1,9 @@
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мероприятия</title>
+    <title>Мои мероприятия</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .container {
@@ -20,7 +21,6 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             overflow: hidden;
-            cursor: pointer;
         }
         .card-body {
             padding: 10px;
@@ -56,12 +56,12 @@
                     <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
                     <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
                     <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
-                    <a href="events.html" class="list-group-item list-group-item-action active">Подборки</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
                 </div>
             </nav>
             <main class="col-md-8">
                 <div class="bg-white p-4 rounded shadow-sm text-center">
-                    <h2 class="text-primary mb-4">Мероприятия</h2>
+                    <h2 class="text-primary mb-4">Мои мероприятия</h2>
                     <div id="events-container">
                         <!-- Карточки мероприятий будут вставлены сюда -->
                     </div>
@@ -69,8 +69,8 @@
             </main>
             <nav class="col-md-2">
                 <div class="list-group">
-                    <a href="events.html" class="list-group-item list-group-item-action active">Все мероприятия</a>
-                    <a href="my_events.html" class="list-group-item list-group-item-action">Мои мероприятия</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Все мероприятия</a>
+                    <a href="my_events.html" class="list-group-item list-group-item-action active">Мои мероприятия</a>
                     <a href="events_management.html" class="list-group-item list-group-item-action">Управление</a>
                 </div>
             </nav>
@@ -95,7 +95,7 @@
                     <img id="modalImage" src="" alt="Изображение мероприятия" style="width: 100%; max-height: 300px; object-fit: cover;">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id="registerButton">Записаться</button>
+                    <button type="button" class="btn btn-danger" id="cancelButton">Отменить участие</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
                 </div>
             </div>
@@ -106,57 +106,38 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const targetUrl = 'http://195.133.201.168:8000/events/get_future_events';
-            const token = localStorage.getItem('access_token');
-            let userId = null;
-            let userEvents = [];
-    
-            // Получаем ID текущего пользователя и мероприятия, на которые он записан
-            fetch('http://195.133.201.168:8000/authorization/get_current_user', {
+            const token = localStorage.getItem('access_token'); // Получаем токен из localStorage
+            const targetUrl = 'http://195.133.201.168:8000/events/get_user_events';
+        
+            fetch(targetUrl, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json'
                 }
             })
-            .then(response => response.json())
-            .then(data => {
-                userId = data.id; // Сохраняем ID пользователя
-    
-                // Получаем мероприятия, на которые пользователь уже записан
-                return fetch('http://195.133.201.168:8000/events/get_user_events', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json'
-                    }
-                });
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
             })
-            .then(response => response.json())
             .then(data => {
-                userEvents = data.events_info.map(event => event.id); // Сохраняем ID мероприятий
-    
-                // Загружаем предстоящие мероприятия
-                return fetch(targetUrl);
-            })
-            .then(response => response.json())
-            .then(data => {
-                const events = data.events || [];
+                const events = data.events_info || [];
                 const eventsContainer = document.getElementById('events-container');
-    
+        
                 if (events.length === 0) {
                     eventsContainer.innerHTML = '<p>Нет мероприятий для отображения.</p>';
                     return;
                 }
-    
+        
                 events.forEach(event => {
                     const { id, title, datetime, is_online, description } = event;
                     const eventDate = new Date(datetime).toLocaleDateString();
-    
-                    // Создаем карточку мероприятия
+        
                     const eventCard = document.createElement('div');
                     eventCard.className = 'card';
-    
+        
                     eventCard.innerHTML = `
                         <div class="card-body">
                             <h5 class="card-title">${title}</h5>
@@ -166,13 +147,7 @@
                             </div>
                         </div>
                     `;
-    
-                    // Добавляем обработчик клика для показа попапа
-                    eventCard.addEventListener('click', function() {
-                        showEventModal(id, title, eventDate, description, is_online);
-                    });
-    
-                    // Получаем изображения для данного мероприятия
+        
                     fetch(`http://195.133.201.168:8000/events/get_event_images/${id}`)
                         .then(response => response.json())
                         .then(images => {
@@ -184,7 +159,11 @@
                             }
                         })
                         .catch(error => console.error('Error fetching images:', error));
-    
+        
+                    eventCard.addEventListener('click', function() {
+                        showEventModal(id, title, eventDate, description, is_online);
+                    });
+        
                     eventsContainer.appendChild(eventCard);
                 });
             })
@@ -192,18 +171,15 @@
                 console.error('Error fetching data:', error);
                 document.getElementById('events-container').innerHTML = `<p>Error fetching data: ${error.message}</p>`;
             });
-    
+        
             function showEventModal(id, title, date, description, is_online) {
-                // Заполняем данные модального окна
                 document.getElementById('modalTitle').innerText = title;
                 document.getElementById('modalDate').innerText = date;
                 document.getElementById('modalDescription').innerText = description;
                 document.getElementById('modalFormat').innerText = is_online ? 'Онлайн' : 'Оффлайн';
-    
-                // Сбрасываем изображение перед загрузкой нового
+        
                 document.getElementById('modalImage').src = '';
-    
-                // Получаем изображение для модального окна
+        
                 fetch(`http://195.133.201.168:8000/events/get_event_images/${id}`)
                     .then(response => response.json())
                     .then(images => {
@@ -212,47 +188,36 @@
                         }
                     })
                     .catch(error => console.error('Error fetching images:', error));
-    
-                const registerButton = document.getElementById('registerButton');
-    
-                // Проверяем, записан ли пользователь на это мероприятие
-                if (userEvents.includes(id)) {
-                    registerButton.disabled = true;
-                    registerButton.classList.add('btn-secondary');
-                    registerButton.classList.remove('btn-primary');
-                    registerButton.innerText = 'Вы уже записаны';
-                } else {
-                    registerButton.disabled = false;
-                    registerButton.classList.add('btn-primary');
-                    registerButton.classList.remove('btn-secondary');
-                    registerButton.innerText = 'Записаться';
-    
-                    // Добавляем обработчик для кнопки "Записаться"
-                    registerButton.onclick = function() {
-                        fetch(`http://195.133.201.168:8000/events/add_user_to_the_event/${id}`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'accept': 'application/json'
+        
+                const cancelButton = document.getElementById('cancelButton');
+                cancelButton.onclick = function() {
+                    fetch(`http://195.133.201.168:8000/events/delete_user_from_the_event/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            alert(`Ваше участие в мероприятии "${title}" было отменено.`);
+                            $('#eventModal').modal('hide');
+                            // Удаляем карточку мероприятия из DOM
+                            const eventCard = document.querySelector(`.card[data-id="${id}"]`);
+                            if (eventCard) {
+                                eventCard.remove();
                             }
-                        })
-                        .then(response => response.json())
-                        .then(() => {
-                            alert(`Вы записались на мероприятие: ${title}`);
-                            registerButton.disabled = true;
-                            registerButton.classList.add('btn-secondary');
-                            registerButton.classList.remove('btn-primary');
-                            registerButton.innerText = 'Вы уже записаны';
-                        })
-                        .catch(error => console.error('Error registering for event:', error));
-                    };
-                }
-    
-                // Показываем модальное окно
+                        } else {
+                            throw new Error('Error cancelling registration');
+                        }
+                    })
+                    .catch(error => console.error('Error cancelling registration:', error));
+                };
+        
                 $('#eventModal').modal('show');
             }
         });
-    </script>
 
+    </script>
 </body>
 </html>
