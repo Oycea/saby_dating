@@ -39,6 +39,10 @@
             text-align: center;
             margin-top: 20px;
         }
+        .carousel-inner img {
+            width: 100%;
+            height: 400px;
+        }
     </style>
 </head>
 <body>
@@ -80,6 +84,30 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadUsers();
         });
+
+        async function loadPhotos(userId) {
+            const token = localStorage.getItem('access_token');
+            try {
+                const response = await fetch(`http://195.133.201.168:8000/photos/other_user_photos/${userId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                });
+    
+                if (!response.ok) {
+                    throw new Error('Ошибка при получении фотографий');
+                }
+    
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить фотографии');
+                return {photos: []};
+            }
+        }
 
         function swipeLeft() {
             const userId = users[currentUserIndex - 1];
@@ -165,7 +193,11 @@
                 }
 
                 const data = await response.json();
-                createCard(data);
+                const photos = await loadPhotos(userId);
+                const defaultPhoto = 'https://slabstore.ru/portfolio/26/3.jpg';
+    
+                const userPhotos = photos.photos.length > 0 ? photos.photos : [{photo: defaultPhoto}];
+                createCard(data, userPhotos);
             } catch (error) {
                 console.error('Ошибка:', error);
             }
@@ -180,8 +212,29 @@
             const card = document.createElement('div');
             card.className = 'card mb-3';
 
+            const photosHtml = userPhotos.length > 1 ? `
+                <div id="photoCarousel" class="carousel slide" data-ride="carousel">
+                    <div class="carousel-inner">
+                        ${userPhotos.map((photo, index) => `
+                            <div class="carousel-item ${index === 0 ? 'active' : ''}">
+                                <img src="${photo.photo}" class="d-block w-100" alt="Фотография пользователя">
+                            </div>
+                        `).join('')}
+                    </div>
+                    <a class="carousel-control-prev" href="#photoCarousel" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Предыдущий</span>
+                    </a>
+                    <a class="carousel-control-next" href="#photoCarousel" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Следующий</span>
+                    </a>
+                </div>
+            ` : `<img src="${userPhotos[0].photo}" class="d-block w-100" alt="Фотография пользователя">`;
+
             card.innerHTML = `
                 <div class="card-body text-center">
+                    ${photosHtml}
                     <h5 class="card-title">${userInfo[0] || 'null'}</h5>
                     <p class="card-text">Возраст: ${userInfo[2] || 'null'} лет</p>
                     <div class="tags mb-3">

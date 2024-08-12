@@ -153,6 +153,37 @@ def get_user_photos(current_user: User = Depends(get_current_user)):
         )
 
 
+@photos_router.get("/other_user_photos/{userId}", status_code=status.HTTP_200_OK)
+async def get_other_user_photos(userId: int):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, image FROM users_images WHERE user_id = %s AND is_deleted = false", (userId,))
+                photos_data = cursor.fetchall()
+
+                all_photos = []
+                invalid_photos = []
+                for photo in photos_data:
+                    photo_id, photo_bytes = photo
+                    image_type = imghdr.what(BytesIO(photo_bytes))
+                    if image_type is None:
+                        invalid_photos.append(photo_id)
+                        continue
+
+                    photo_base64 = base64.b64encode(photo_bytes).decode('utf-8')
+                    photo_data_url = f"data:image/{image_type};base64,{photo_base64}"
+                    all_photos.append({"id": photo_id, "photo": photo_data_url})
+
+                if invalid_photos:
+                    return {"photos": all_photos, "invalid_photos": invalid_photos}
+                return {"photos": all_photos}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
 @photos_router.put("/delete_photo/{photo_id}/", status_code=status.HTTP_200_OK)
 def delete_photo(photo_id: int, current_user: User = Depends(get_current_user)):
     try:
