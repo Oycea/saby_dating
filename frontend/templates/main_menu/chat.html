@@ -18,13 +18,15 @@
         .container {
             display: flex;
             height: 100vh;
-            margin: 0 200px 0 200px;
+            max-width: 70%;
         }
 
         .content {
             flex: 1;
             padding: 20px;
             background-color: #fff;
+            max-width: 80%;
+            min-width: 80%;
         }
 
         .header {
@@ -69,16 +71,13 @@
         .messages {
             flex: 1;
             padding: 10px;
-            background-color: #f9f9f9;
             overflow-y: auto;
         }
 
         .chat {
             list-style: none;
-            margin: 0;
             padding: 0 0 50px 0;
-            margin-top: 60px;
-            margin-bottom: 10px;
+            margin: 60px 0 10px;
         }
 
         .chat li {
@@ -105,7 +104,7 @@
         .other .msg {
             order: 1;
             border-top-left-radius: 0;
-            box-shadow: -1px 2px 0px #D4D4D4;
+            box-shadow: -1px 2px 0 #D4D4D4;
         }
 
         .other:before {
@@ -129,7 +128,7 @@
         .self .msg {
             order: 1;
             border-bottom-right-radius: 0;
-            box-shadow: 1px 2px 0px #D4D4D4;
+            box-shadow: 1px 2px 0 #D4D4D4;
         }
 
         .self .avatar {
@@ -147,7 +146,7 @@
             border: 5px solid #e5e5e5;
             border-right-color: transparent;
             border-top-color: transparent;
-            box-shadow: 0px 2px 0px #D4D4D4;
+            box-shadow: 0 2px 0 #D4D4D4;
         }
 
         .msg {
@@ -156,8 +155,9 @@
             max-width: 50%;
             padding: 10px;
             border-radius: 2px;
-            box-shadow: 0px 2px 0px rgba(0, 0, 0, 0.07);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.07);
             word-wrap: break-word;
+            position: relative;
         }
 
         .msg p {
@@ -170,7 +170,7 @@
             display: block;
             width: 450px;
             border-radius: 5px;
-            box-shadow: 0px 0px 3px #eee;
+            box-shadow: 0 0 3px #eee;
             transition: all .4s cubic-bezier(0.565, -0.260, 0.255, 1.410);
         }
 
@@ -196,14 +196,83 @@
             background-color: white;
             border-left: 1px solid #ccc;
         }
+        .delete-icon {
+            display: none;
+            position: absolute;
+            top: 10px;
+            cursor: pointer;
+        }
+
+        .self .delete-icon {
+            left: -20px;
+        }
+
+        .other .delete-icon {
+            right: -20px;
+        }
+
+        .chat li:hover .delete-icon {
+            display: block;
+        }
+
+        .edit-icon {
+            display: none;
+            position: absolute;
+            top: 10px;
+            cursor: pointer;
+        }
+
+        .self .edit-icon {
+            left: -40px;
+        }
+
+        .other .edit-icon {
+            right: -40px;
+        }
+
+        .chat li:hover .edit-icon {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                font-size: 20px;
+            }
+
+            .back-button {
+                font-size: 16px;
+            }
+
+            .msg {
+                max-width: 90%;
+            }
+
+            .messages {
+                padding: 5px;
+            }
+
+            .send-button {
+                width: 50px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .header {
+                font-size: 18px;
+            }
+
+            .msg {
+                max-width: 95%;
+            }
+        }
     </style>
 </head>
 <body>
 <header class="bg-primary text-white text-center py-3">
-    <img src="../logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
+    <img src="logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
 </header>
 <div class="container">
-    <nav class="col-md-3">
+    <nav class="col-md-2 mt-4">
         <div class="list-group">
             <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
             <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
@@ -221,7 +290,7 @@
             <div class="messages">
                 <ol id='messages' class="chat"></ol>
             </div>
-            <form action="" onsubmit="sendMessage(event)" style="display: flex">
+            <form action="" onsubmit="sendMessage(event)" style="display: flex" id="sendForm">
                 <input type="text" placeholder="Введите сообщение..." id="messageText" autocomplete="off"
                        style="border-bottom-left-radius: 10px;">
                 <input type="submit" value="&#8594;" class="send-button" style="font-size: 18px;">
@@ -271,18 +340,22 @@
                         li.classList.add('self');
                         li.innerHTML = `
                     <div class="avatar"><img src="${profileImage}" alt="Моё фото"/></div>
-                    <div class="msg">
+                    <div class="msg" data-id="${message[3]}">
                         <p>${message[1]}</p>
                         <time>${message[2]}</time>
+                        <i class="fas fa-times delete-icon" style="color: red;"></i>
+                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
                     </div>
                 `;
                     } else {
                         li.classList.add('other');
                         li.innerHTML = `
                     <div class="avatar"><img src="${otherUserImage}" alt="Фото другого пользователя"/></div>
-                    <div class="msg">
+                    <div class="msg" data-id="${message[3]}">
                         <p>${message[1]}</p>
                         <time>${message[2]}</time>
+                        <i class="fas fa-times delete-icon" style="color: red;"></i>
+                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
                     </div>
                 `;
                     }
@@ -303,9 +376,92 @@
             });
     });
 
+
+    const messagesContainer1 = document.querySelector('.messages');
+    messagesContainer1.addEventListener('click', function(event) {
+        if (event.target.classList.contains('delete-icon')) {
+            const msgElement = event.target.closest('.msg');
+            const messageId = msgElement.getAttribute('data-id');
+            deleteMessage(messageId);
+        }
+    });
+
+
+    function deleteMessage(messageId) {  // Удаление сообщения
+    $.ajax({
+        type: "PUT",
+        url: `http://195.133.201.168:8000/chat/delete_message/${messageId}`,
+        data: { messageId: messageId },
+        success: function () {
+            const msgElement = document.querySelector(`.msg[data-id="${messageId}"]`);
+            if (msgElement) {
+                msgElement.innerHTML = `
+                    <p style="color: red; font-weight: bold;">Это сообщение удалено</p>
+                    <time></time>
+                `;
+                const deleteIcon = msgElement.querySelector('.delete-icon');
+                if (deleteIcon) {
+                    deleteIcon.style.display = 'none';
+                }
+            }
+        },
+        error: function (error) {
+            console.error('Ошибка при удалении сообщения:', error);
+        }
+    });
+}
+
+
+    const messagesContainer2 = document.querySelector('.messages');
+    messagesContainer2.addEventListener('click', function(event) {
+        if (event.target.classList.contains('edit-icon')) {
+            const msgElement = event.target.closest('.msg');
+            const messageId = msgElement.getAttribute('data-id');
+            const messageText = msgElement.querySelector('p').innerText;
+            const messageDate = msgElement.querySelector('time').innerText;
+            document.getElementById("messageText").value = messageText;
+            document.getElementById("sendForm").onsubmit = (event) => editMessage(event, messageId, document.getElementById("messageText").value, messageDate);
+        }
+    });
+
+
+    function editMessage(event, messageId, inputValue, messageDate){  // Изменение сообщения
+        event.preventDefault();
+        document.getElementById("messageText").value = ""
+        $.ajax({
+            type: "PUT",
+            url: `http://195.133.201.168:8000/chat/edit_message/${messageId}/${inputValue}`,
+            data: {messageId: messageId, inputValue: inputValue},
+            success: function () {
+                const msgElement = document.querySelector(`.msg[data-id="${messageId}"]`);
+                if (msgElement) {
+                    msgElement.innerHTML = `
+                        <p>${inputValue}</p>
+                        <time>${messageDate}</time>
+                        <i class="fas fa-times delete-icon" style="color: red;"></i>
+                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
+                    `;
+                }
+                document.getElementById("sendForm").onsubmit = (event) => sendMessage(event);
+            },
+            error: function (error) {
+                console.error('Ошибка при изменении сообщения:', error);
+            }
+        })
+    }
+
+
+    const messagesContainer = document.querySelector('.messages');
+    messagesContainer.addEventListener('scroll', function () {
+        if (messagesContainer.scrollTop <= 150 && fullResultLen > offset) {
+            loadMessages();
+        }
+    });
+
     let offset = 30; // Начальный индекс для загрузки сообщений
     const limit = 30; // Кол-во сообщений для загрузки
     let loadingMessages = false;
+
 
     function loadMessages() {  // Ленивая загрузка
         if (loadingMessages) return;
@@ -322,17 +478,21 @@
                             listItem.classList.add('self');
                             listItem.innerHTML = `
                             <div class="avatar"><img src="${profileImage}" alt="Моё фото"/></div>
-                            <div class="msg">
+                            <div class="msg" data-id="${message[3]}">
                                 <p>${message[1]}</p>
                                 <time>${message[2]}</time>
+                                <i class="fas fa-times delete-icon" style="color: red;"></i>
+                                <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
                             </div>`;
                         } else {
                             listItem.classList.add('other');
                             listItem.innerHTML = `
                             <div class="avatar"><img src="${otherUserImage}" alt="Фото другого пользователя"/></div>
-                            <div class="msg">
+                            <div class="msg" data-id="${message[3]}">
                                 <p>${message[1]}</p>
                                 <time>${message[2]}</time>
+                                <i class="fas fa-times delete-icon" style="color: red;"></i>
+                                <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
                             </div>`;
                         }
                         $("#messages").prepend(listItem);
@@ -347,14 +507,6 @@
     }
 
 
-    const messagesContainer = document.querySelector('.messages');
-    messagesContainer.addEventListener('scroll', function () {
-        if (messagesContainer.scrollTop <= 150 && fullResultLen > offset) {
-            loadMessages();
-        }
-    });
-
-
     let ws = new WebSocket(`ws://195.133.201.168:8000/chat/ws`);
 
     ws.onmessage = function (event) { // Добавление нового сообщения в чат
@@ -366,17 +518,21 @@
             message.classList.add('self');
             message.innerHTML = `
                     <div class="avatar"><img src="${profileImage}"/></div>
-                    <div class="msg">
+                    <div class="msg" data-id="${data.last_message_id}">
                         <p>${data.message}</p>
                         <time>${data.date}</time>
+                        <i class="fas fa-times delete-icon" style="color: red;"></i>
+                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
                     </div>`;
         } else {
             message.classList.add('other');
             message.innerHTML = `
                     <div class="avatar"><img src="${otherUserImage}"/></div>
-                    <div class="msg">
+                    <div class="msg" data-id="${data.last_message_id}">
                         <p>${data.message}</p>
                         <time>${data.date}</time>
+                        <i class="fas fa-times delete-icon" style="color: red;"></i>
+                        <i class="fas fa-pencil-alt edit-icon" style="color: #007bff;"></i>
                     </div>`;
         }
 
