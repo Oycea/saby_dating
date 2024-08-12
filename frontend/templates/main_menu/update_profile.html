@@ -125,6 +125,10 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label for="biography">О себе</label>
+                            <textarea class="form-control" id="biography" rows="4" placeholder="Расскажите о себе..."></textarea>
+                        </div>
+                        <div class="form-group">
                             <label for="interests">Интересы</label>
                             <div id="interests-container" class="btn-group btn-group-toggle w-100" data-toggle="buttons">
                                 <!-- Чекбоксы с интересами будут добавлены сюда динамически -->
@@ -159,7 +163,7 @@
                     ${interest.title}
                 `;
                 label.addEventListener('click', function() {
-                    label.classList.toggle('active'); // Переключать класс активного состояния
+                    label.classList.toggle('active');
                 });
                 interestsContainer.appendChild(label);
             });
@@ -167,8 +171,8 @@
             const genderButtons = document.querySelectorAll('input[name="gender_id"]');
             genderButtons.forEach(button => {
                 button.addEventListener('change', function() {
-                    genderButtons.forEach(btn => btn.parentElement.classList.remove('active')); // Удалить активный класс у всех
-                    this.parentElement.classList.add('active'); // Добавить активный класс к выбранному
+                    genderButtons.forEach(btn => btn.parentElement.classList.remove('active'));
+                    this.parentElement.classList.add('active');
                 });
             });
 
@@ -176,18 +180,19 @@
                 event.preventDefault();
 
                 const name = document.getElementById('name').value;
-                const position = document.getElementById('position').value; // Получаем значение должности
+                const position = document.getElementById('position').value;
                 const city = document.getElementById('city').value;
                 const birthday = document.getElementById('birthday').value;
                 const height = document.getElementById('height').value ? parseInt(document.getElementById('height').value) : undefined;
                 const gender_id = document.querySelector('input[name="gender_id"]:checked').value;
                 const target_id = document.getElementById('target_id').value ? parseInt(document.getElementById('target_id').value) : undefined;
                 const communication_id = document.getElementById('communication_id').value ? parseInt(document.getElementById('communication_id').value) : undefined;
+                const biography = document.getElementById('biography').value;
 
                 const selectedInterests = Array.from(document.querySelectorAll('input[name="interests"]:checked'))
                     .map(checkbox => parseInt(checkbox.value));
 
-                const data = { name, position, city, birthday, height, gender_id, target_id, communication_id, interests: selectedInterests }; // Добавляем позицию
+                const data = { name, position, city, birthday, height, gender_id, target_id, communication_id, biography, interests: selectedInterests };
 
                 fetch('http://195.133.201.168:8000/authorization/update_profile', {
                     method: 'PATCH',
