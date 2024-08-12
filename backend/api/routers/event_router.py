@@ -197,6 +197,31 @@ def get_users_events(current_user: User = Depends(get_current_user)) -> Dict[str
         raise HTTPException(status_code=500, detail=str(ex))
 
 
+@event_router.get('/get_creator_events', name='Get events in which this user is creator')
+def get_users_events(current_user: User = Depends(get_current_user)) -> Dict[str, int | Any]:
+    """
+        Предоставляет информацию о мероприятиях, которые организовал данный пользователь
+
+        :param current_user: Текущий пользователь
+        :return: Количество мероприятий и информацию о них
+        :raises HTTPException: Мероприятия не найдены
+        """
+    try:
+        with open_conn() as connection:
+            with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+                user_id = current_user.id
+                cursor.execute("SELECT * FROM events WHERE creator_id=%s",
+                               (user_id, ))
+                events = cursor.fetchall()
+
+                if not events:
+                    raise HTTPException(status_code=404, detail="Events not found")
+
+                return {'size': len(events), 'events_info': events}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
 @event_router.post('/create_event/', name='Create new event')
 def create_event(title: str,
                  description: str,
