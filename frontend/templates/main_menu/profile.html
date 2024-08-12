@@ -49,6 +49,35 @@
             height: 200px;
             border-radius: 0.5rem;
         }
+
+        .dropdown {
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f9f9f9;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+            width: 100%;
+        }
+
+        .dropdown-content button {
+            color: black;
+            padding: 12px;
+            text-decoration: none;
+            display: block;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -72,19 +101,25 @@
                     </div>
                     <div class="account-info mb-4">
                         <div class="text-center">
-                            <div>
-                            <img id="profile-image" class="rounded-circle" src="default-profile.png" alt="Фото профиля"
-                                 style="width: 100px; height: 100px; object-fit: cover;">
-                        </div>
-                        <input type="file" id="upload-image" accept="image/*" style="display: none;"
-                               onchange="uploadPhoto()">
-                        <button class="btn btn-primary" onclick="document.getElementById('upload-image').click()">
-                            Загрузить фото
-                        </button>
-                        <button class="btn btn-primary" onclick="fetchUserPhotos()">Просмотреть фотографии</button>
-                        <button class="btn btn-primary" onclick="fetchUserPhotosForProfile()">Установить фото профиля
-                        </button>
-                        <button class="btn btn-danger" onclick="fetchUserPhotosForDeletion()">Удалить фото</button>
+                            <img id="profile-image" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
+                            <div class="dropdown">
+                                <button class="dropbtn btn btn-primary">Действия с фотографиями</button>
+                                <div class="dropdown-content">
+                                    <input type="file" id="upload-image" accept="image/*" style="display: none;"
+                                           onchange="uploadPhoto()">
+                                    <button class="btn btn-primary"
+                                            onclick="document.getElementById('upload-image').click()">
+                                        Загрузить фото
+                                    </button>
+                                    <button class="btn btn-primary" onclick="fetchUserPhotos()">Просмотреть фотографии
+                                    </button>
+                                    <button class="btn btn-primary" onclick="fetchUserPhotosForProfile()">Установить фото
+                                        профиля
+                                    </button>
+                                    <button class="btn btn-danger" onclick="fetchUserPhotosForDeletion()">Удалить фото
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <h4 class="mb-3 mt-4">Информация о пользователе</h4>
                         <ul class="list-group" id="user-info">
@@ -398,8 +433,7 @@
                 document.getElementById('profile-image').src = profileImage;
             })
             .catch(error => {
-                console.error('Ошибка:', error);
-                alert('Не удалось загрузить фотографии');
+                document.getElementById('profile-image').src = "https://slabstore.ru/portfolio/26/3.jpg";
             });
     }
 
@@ -554,6 +588,7 @@
                     alert(data.detail);
                     $('#deletePhotoModal').modal('hide');
                     fetchUserPhotosForDeletion();
+                    loadProfileImage();
                 })
                 .catch(error => {
                     console.error('Ошибка:', error);
@@ -587,7 +622,7 @@
             })
             .then(data => {
                 alert(data.detail);
-                document.getElementById('profile-image').src = `http://195.133.201.168:8000/photos/profile_photo/`;
+                loadProfileImage();
                 $('#photosModal').modal('hide');
             })
             .catch(error => {
