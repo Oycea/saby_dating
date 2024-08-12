@@ -1,15 +1,18 @@
 import os
 import logging
-import socket
+
 
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from fastapi import HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from passlib.hash import argon2
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from logging.handlers import TimedRotatingFileHandler
+
 
 from config import (SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES,
                     SMTP_SERVER, SMTP_PORT, SMTP_PASSWORD, SMTP_USER)
@@ -123,10 +126,8 @@ class IPFilter(logging.Filter):
         return True
 
     def get_ip_address(self):
-        # Прямое получение IP-адреса пользователя
         ip = self.request.client.host
         return ip
-
 
 class CustomFormatter(logging.Formatter):
     def format(self, record):
@@ -136,17 +137,21 @@ class CustomFormatter(logging.Formatter):
 
 
 def setup_logging(request: Request):
-    handler = logging.FileHandler(log_file_path)
-    formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(ip_address)s')
-    handler.setFormatter(formatter)
-
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
-    logger.addFilter(IPFilter(request))
+
+    # Проверка, чтобы обработчик и фильтр не добавлялись повторно
+    if not logger.hasHandlers():
+        handler = TimedRotatingFileHandler(log_file_path, when='midnight', interval=1)
+        formatter = CustomFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(ip_address)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    ip_filter = IPFilter(request)
+    if not any(isinstance(f, IPFilter) for f in logger.filters):
+        logger.addFilter(ip_filter)
 
     return logger
-
 
 # Очистка логов
 def clear_logs():

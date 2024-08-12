@@ -10,90 +10,52 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <style>
-        body {
-            background-color: #f8f9fa;
-            font-family: 'Arial', sans-serif;
-        }
         .container {
-            max-width: 800px;
+            max-width: 1000px;
         }
-        .header-logo {
-            height: 50px;
+        .modal-dialog {
+            max-width: 600px;
         }
-        .account-page {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease-in-out;
+        .modal-content {
+            padding-left: 20px;
+            padding-right: 20px;
         }
-        .account-page:hover {
-            transform: scale(1.02);
+        .btn-group-toggle .btn {
+            margin-right: 5px;
         }
-        .form-header {
-            margin-bottom: 20px;
+        .form-group .radio-inline {
+            display: inline-block;
+            margin-right: 15px;
         }
         .form-header h2 {
             color: #007bff;
         }
-        .list-group-item {
-            font-weight: bold;
-            border: none;
-            transition: background-color 0.2s;
-        }
-        .list-group-item:hover {
-            background-color: #007bff;
-            color: white;
-        }
-        .list-group-item i {
-            margin-right: 10px;
-        }
-        .form-control {
-            border-radius: 30px;
-        }
         .btn-primary, .btn-secondary {
-            border-radius: 30px;
+            border-radius: 0;
         }
-        .btn-primary {
-            background-color: #007bff;
-            border: none;
-        }
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-            border: none;
-        }
-        .btn-secondary:hover {
-            background-color: #5a6268;
+        .btn.active {
+            background-color: #007bff; /* Цвет фона для активной кнопки */
+            color: white; /* Цвет текста для активной кнопки */
+            border-color: #007bff; /* Цвет границы для активной кнопки */
         }
     </style>
 </head>
 <body>
     <header class="bg-primary text-white text-center py-3">
-        <img src="../logo.png" alt="Логотип сайта" class="header-logo d-inline-block align-middle">
+        <img src="../logo.png" alt="Логотип сайта" class="d-inline-block align-middle" style="height: 50px;">
     </header>
     <div class="container mt-5">
         <div class="row">
-            <nav class="col-md-3">
+            <nav class="col-md-2">
                 <div class="list-group">
-                    <a href="profile.html" class="list-group-item list-group-item-action">
-                        <i class="fas fa-user"></i> Аккаунт
-                    </a>
-                    <a href="dialogs.html" class="list-group-item list-group-item-action">
-                        <i class="fas fa-comments"></i> Диалоги
-                    </a>
-                    <a href="swipes.html" class="list-group-item list-group-item-action">
-                        <i class="fas fa-sync-alt"></i> Свайпы
-                    </a>
-                    <a href="events.html" class="list-group-item list-group-item-action">
-                        <i class="fas fa-calendar-alt"></i> Подборки
-                    </a>
+                    <a href="profile.html" class="list-group-item list-group-item-action">Аккаунт</a>
+                    <a href="dialogs.html" class="list-group-item list-group-item-action">Диалоги</a>
+                    <a href="swipes.html" class="list-group-item list-group-item-action">Свайпы</a>
+                    <a href="events.html" class="list-group-item list-group-item-action">Подборки</a>
                 </div>
             </nav>
-            <main class="col-md-9">
-                <div class="account-page">
+            <main class="col-md-8">
+                <div class="account-page bg-white p-4 rounded shadow-sm">
                     <div class="form-header text-center mb-4">
                         <h2 class="text-primary">Изменение профиля</h2>
                     </div>
@@ -124,23 +86,53 @@
                             <input type="date" class="form-control" id="birthday">
                         </div>
                         <div class="form-group">
+                            <label for="position">Должность</label>
+                            <input type="text" class="form-control" id="position" placeholder="Введите вашу должность">
+                        </div>
+                        <div class="form-group">
                             <label for="height">Рост</label>
                             <input type="number" class="form-control" id="height" placeholder="Введите ваш рост">
                         </div>
                         <div class="form-group">
                             <label for="gender_id">Пол</label>
-                            <select class="form-control" id="gender_id">
-                                <option value="1">Мужской</option>
-                                <option value="2">Женский</option>
-                            </select>
+                            <div class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                                <label class="btn btn-outline-primary w-50">
+                                    <input type="radio" name="gender_id" value="1"> Мужской
+                                </label>
+                                <label class="btn btn-outline-primary w-50">
+                                    <input type="radio" name="gender_id" value="2"> Женский
+                                </label>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="target_id">Цель</label>
-                            <input type="number" class="form-control" id="target_id" placeholder="Введите ID цели">
+                            <select class="form-control" id="target_id" required>
+                                <option value="" disabled selected>Выберите цель общения</option>
+                                <option value="1">Отношения</option>
+                                <option value="2">Дружба</option>
+                                <option value="3">Нетворкинг</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label for="communication_id">Вид общения</label>
-                            <input type="number" class="form-control" id="communication_id" placeholder="Введите ID связи">
+                            <label for="communication_id">Способ общения</label>
+                            <select class="form-control" id="communication_id" required>
+                                <option value="" disabled selected>Выберите способ общения</option>
+                                <option value="1">Много переписываюсь</option>
+                                <option value="2">Не люблю чатиться</option>
+                                <option value="3">Люблю видеочаты</option>
+                                <option value="4">Общаюсь по телефону</option>
+                                <option value="5">Лучше встречусь лично</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="biography">О себе</label>
+                            <textarea class="form-control" id="biography" rows="4" placeholder="Расскажите о себе..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="interests">Интересы</label>
+                            <div id="interests-container" class="btn-group btn-group-toggle w-100" data-toggle="buttons">
+                                <!-- Чекбоксы с интересами будут добавлены сюда динамически -->
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
                     </form>
@@ -151,51 +143,78 @@
             </main>
         </div>
     </div>
-<script>
-    document.getElementById('edit-profile-form').addEventListener('submit', function(event) {
-    event.preventDefault(); // Предотвращаем обычное отправление формы
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const interestsFromServer = [
+                { id: 1, title: 'Футбол' },
+                { id: 2, title: 'Музыка' },
+                { id: 3, title: 'Чтение' },
+                { id: 4, title: 'Путешествия' },
+                { id: 5, title: 'Кулинария' },
+            ];
 
-    const name = document.getElementById('name').value || undefined;
-    const city = document.getElementById('city').value || undefined;
-    const birthday = document.getElementById('birthday').value || undefined;
-    const height = document.getElementById('height').value ? parseInt(document.getElementById('height').value) : undefined;
-    const gender_id = document.getElementById('gender_id').value ? parseInt(document.getElementById('gender_id').value) : undefined;
-    const target_id = document.getElementById('target_id').value ? parseInt(document.getElementById('target_id').value) : undefined;
-    const communication_id = document.getElementById('communication_id').value ? parseInt(document.getElementById('communication_id').value) : undefined;
+            const interestsContainer = document.getElementById('interests-container');
 
-    // Создаем объект с данными для отправки
-    const data = {};
-    if (name !== undefined) data.name = name;
-    if (city !== undefined) data.city = city;
-    if (birthday !== undefined) data.birthday = birthday;
-    if (height !== undefined) data.height = height;
-    if (gender_id !== undefined) data.gender_id = gender_id;
-    if (target_id !== undefined) data.target_id = target_id;
-    if (communication_id !== undefined) data.communication_id = communication_id;
+            interestsFromServer.forEach(interest => {
+                const label = document.createElement('label');
+                label.className = 'btn btn-outline-primary';
+                label.innerHTML = `
+                    <input type="checkbox" value="${interest.id}" name="interests" style="display: none;">
+                    ${interest.title}
+                `;
+                label.addEventListener('click', function() {
+                    label.classList.toggle('active');
+                });
+                interestsContainer.appendChild(label);
+            });
 
-    // Выполняем запрос на сервер
-    fetch('http://195.133.201.168:8000/authorization/update_profile', {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}` // Если необходимо передать токен
-        },
-        body: JSON.stringify(data),
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Ошибка при обновлении профиля');
-        }
-        return response.json();
-    })
-    .then(updatedUser => {
-        alert('Профиль успешно обновлен');
-        window.location.href = 'profile.html';
-    })
-    .catch(error => {
-        alert('Не удалось обновить профиль: ' + error.message);
-    });
-});
-</script>
+            const genderButtons = document.querySelectorAll('input[name="gender_id"]');
+            genderButtons.forEach(button => {
+                button.addEventListener('change', function() {
+                    genderButtons.forEach(btn => btn.parentElement.classList.remove('active'));
+                    this.parentElement.classList.add('active');
+                });
+            });
+
+            document.getElementById('edit-profile-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const name = document.getElementById('name').value;
+                const position = document.getElementById('position').value;
+                const city = document.getElementById('city').value;
+                const birthday = document.getElementById('birthday').value;
+                const height = document.getElementById('height').value ? parseInt(document.getElementById('height').value) : undefined;
+                const gender_id = document.querySelector('input[name="gender_id"]:checked').value;
+                const target_id = document.getElementById('target_id').value ? parseInt(document.getElementById('target_id').value) : undefined;
+                const communication_id = document.getElementById('communication_id').value ? parseInt(document.getElementById('communication_id').value) : undefined;
+                const biography = document.getElementById('biography').value;
+
+                const selectedInterests = Array.from(document.querySelectorAll('input[name="interests"]:checked'))
+                    .map(checkbox => parseInt(checkbox.value));
+
+                const data = { name, position, city, birthday, height, gender_id, target_id, communication_id, biography, interests: selectedInterests };
+
+                fetch('http://195.133.201.168:8000/authorization/update_profile', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    },
+                    body: JSON.stringify(data),
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Ошибка при обновлении профиля');
+                    return response.json();
+                })
+                .then(updatedUser => {
+                    alert('Профиль успешно обновлен');
+                    window.location.href = 'profile.html';
+                })
+                .catch(error => {
+                    alert('Не удалось обновить профиль: ' + error.message);
+                });
+            });
+        });
+    </script>
 </body>
 </html>

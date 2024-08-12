@@ -307,7 +307,7 @@
 
         if (!token) {
             alert('Необходима авторизация');
-            window.location.href = '../index.html';
+            window.location.href = '../login/login.html';
             return;
         }
 
@@ -372,7 +372,7 @@
             .catch(error => {
                 console.error('Ошибка:', error);
                 alert('Не удалось загрузить информацию о пользователе');
-                window.location.href = '../index.html';
+                window.location.href = '../login/login.html';
             });
     });
 
