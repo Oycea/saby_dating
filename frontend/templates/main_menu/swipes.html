@@ -203,10 +203,9 @@
             }
         }
 
-        function createCard(data) {
+        function createCard(data, userPhotos) {
             const cardContainer = document.getElementById('cardContainer');
             const userInfo = data["Information about user"];
-            const userPhotos = data["All photos"];
             const userInterests = data["All interests"];
 
             const card = document.createElement('div');
