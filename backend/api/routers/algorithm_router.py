@@ -105,7 +105,7 @@ def create_like(user_like_to: int, current_user: User = Depends(get_current_user
                 if new_match:
                     cursor.execute(
                         "SELECT * FROM dialogues WHERE ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND "
-                        "user2_id = %s)) AND is_deleted = false")
+                        "user2_id = %s)) AND is_deleted = false", (user_like_to, user_like_from, user_like_from, user_like_to,))
                     if not cursor.fetchall():
                         cursor.execute("INSERT INTO dialogues (user1_id, user2_id) VALUES(%s, %s)",
                                        (user_like_from, user_like_to))
