@@ -46,13 +46,16 @@ def get_likes(current_user: User = Depends(get_current_user)) -> list:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
+
 @algorithm_router.get('/get_dislikes/', name='Get dislikes from user by user_id')
 def get_dislikes(current_user: User = Depends(get_current_user)) -> list:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 user_id = current_user.id
-                cursor.execute("SELECT user_id_to, created_at FROM dislikes WHERE user_id_from=% ", (user_id,))
+                cursor.execute(
+                    "SELECT user_id_to, created_at FROM dislikes WHERE user_id_from=%s",
+                    (user_id,))
                 dislikes = cursor.fetchall()
                 if not dislikes:
                     raise HTTPException(status_code=404, detail="Dislikes not found")
