@@ -279,6 +279,62 @@ def get_interests() -> List[Interest]:
 temp_storage = {}
 
 
+@authorization_router.get("/confirm/{token}")
+def confirm_email(token: str):
+    user_data = temp_storage.get(token)
+    if not user_data:
+        raise HTTPException(status_code=404, detail="Invalid or expired token")
+    user_values = (
+        user_data["email"],
+        user_data["password"],
+        user_data["name"],
+        user_data["city"],
+        user_data["birthday"],
+        user_data["position"],
+        user_data["height"],
+        user_data["gender_id"],
+        user_data["target_id"],
+        user_data["communication_id"],
+        user_data["biography"]
+    )
+    interests_value = user_data["interests"]
+
+    insert_query = """
+                        INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, communication_id, biography)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                    """
+    filters_query = """
+                            INSERT INTO filters (user_id, age_min, age_max, height_min, height_max, communication_id, target_id, gender_id, city, is_deleted)
+                            VALUES (%s, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+                        """
+
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(insert_query, user_values)
+                user_id = cursor.fetchone()[0]
+                cursor.execute(filters_query, (user_id,))
+                if interests_value:
+                    interests_query = """
+                                        INSERT INTO users_interests (user_id, interest_id)
+                                        VALUES (%s, (SELECT id FROM interests WHERE title = %s))
+                                    """
+                    cursor.executemany(
+                        interests_query,
+                        [(user_id, interest) for interest in interests_value]
+                    )
+                connection.commit()
+                del temp_storage[token]
+                access_token = create_access_token(data={"sub": user_data["email"]})
+                return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
 @authorization_router.post('/register/', status_code=status.HTTP_200_OK,
                            name='Регистрация нового пользователя')
 def register(email: EmailStr, password: str, name: str, city: str,
@@ -356,54 +412,7 @@ def register(email: EmailStr, password: str, name: str, city: str,
         )
 
 
-@authorization_router.get("/confirm/{token}")
-def confirm_email(token: str):
-    user_data = temp_storage.get(token)
-    if not user_data:
-        raise HTTPException(status_code=404, detail="Invalid or expired token")
-    user_values = (
-        user_data["email"],
-        user_data["password"],
-        user_data["name"],
-        user_data["city"],
-        user_data["birthday"],
-        user_data["position"],
-        user_data["height"],
-        user_data["gender_id"],
-        user_data["target_id"],
-        user_data["communication_id"],
-        user_data["biography"]
-    )
-    interests_value = user_data["interests"]
 
-    insert_query = """
-                        INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, communication_id, biography)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        RETURNING id
-                    """
-    try:
-        with open_conn() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(insert_query, user_values)
-                user_id = cursor.fetchone()[0]
-                if interests_value:
-                    interests_query = """
-                                        INSERT INTO users_interests (user_id, interest_id)
-                                        VALUES (%s, (SELECT id FROM interests WHERE title = %s))
-                                    """
-                    cursor.executemany(
-                        interests_query,
-                        [(user_id, interest) for interest in interests_value]
-                    )
-                connection.commit()
-                del temp_storage[token]
-                access_token = create_access_token(data={"sub": user_data["email"]})
-                return {"access_token": access_token, "token_type": "bearer"}
-    except Exception as ex:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Внутренняя ошибка сервера: {str(ex)}"
-        )
 
 
 @authorization_router.post('/login', response_model=Dict[str, str], name='Вход в систему')
