@@ -290,8 +290,11 @@ def patch_filters(age_min: Optional[int] = None, age_max: Optional[int] = None,
                     new_filters["height max"], new_filters["communication id"], new_filters["target id"],
                     new_filters["gender id"], new_filters["city"], user_id,)
                 cursor.execute(up_filters, vars_filters)
+                cursor.execute("UPDATE filters SET communication_id = null WHERE communication_id = -1")
+                cursor.execute("UPDATE filters SET target_id = null WHERE target_id = -1")
+                cursor.execute("UPDATE filters SET gender_id = null WHERE gender_id = -1")
                 if interests:
-                    cursor.execute("DELETE FROM filters_interests WHERE user_id = %s ", (user_id,))
+                    cursor.execute("UPDATE filters_interests SET is_deleted = true WHERE user_id = %s", (user_id,))
                     for key in interests:
                         cursor.execute("INSERT INTO filters_interests VALUES(%s, %s)", (user_id, key))
                 return {"filters have been successfully updated for the user with the index": user_id}
