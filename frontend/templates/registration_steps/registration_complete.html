@@ -37,41 +37,44 @@
     </div>
 </div>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
         const currentUrl = window.location.href;
         const token = currentUrl.split('?')[1];
 
         if (token) {
-            console.log('Токен найден:', token);
-            fetch(`http://195.133.201.168:8000/authorization/confirm/${token}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-                .then(response => {
-                    return new Promise((resolve, reject) => {
-                        setTimeout(() => {
-                            if (response.ok) {
-                                resolve(response.json());
-                            } else {
-                                response.text().then(text => reject(new Error(text)));
-                            }
-                        }, 1500);
-                    });
-                })
-                .then(data => {
-                    console.log('Успешно подтверждено:', data);
-                    document.getElementById('alert-container').classList.remove('d-none');
-                    document.getElementById('success-message').textContent = 'Спасибо за подтверждение вашего email! Регистрация завершена.';
-                })
-                .catch(error => {
-                    console.error('Ошибка:', error);
-                    document.getElementById('error-container').classList.remove('d-none');
+            const alertContainer = document.getElementById('alert-container');
+            const errorContainer = document.getElementById('error-container');
+
+            alertContainer.classList.add('d-none');
+            errorContainer.classList.add('d-none');
+
+            try {
+                const response = await fetch(`http://195.133.201.168:8000/authorization/confirm/${token}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+
+                const data = await response.json();
+                console.log('Успешно подтверждено:', data);
+                alertContainer.classList.remove('d-none');
+                document.getElementById('success-message').textContent = 'Спасибо за подтверждение вашего email! Регистрация завершена.';
+            } catch (error) {
+                console.error('Ошибка:', error);
+                errorContainer.classList.remove('d-none');
+                document.getElementById('error-message').textContent = error.message || 'Произошла ошибка при подтверждении.';
+            }
         } else {
             console.error('Токен не найден в URL.');
-            document.getElementById('error-container').classList.remove('d-none');
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.classList.remove('d-none');
+            document.getElementById('error-message').textContent = 'Токен не найден в URL.';
         }
     });
 </script>
