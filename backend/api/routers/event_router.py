@@ -184,7 +184,8 @@ def get_users_events(current_user: User = Depends(get_current_user)) -> Dict[str
                 user_id = current_user.id
                 cursor.execute("SELECT e.* FROM "
                                "events e JOIN events_users eu "
-                               "ON eu.event_id = e.id WHERE eu.user_id=%s AND e.is_deleted=False AND e.datetime>%s",
+                               "ON eu.event_id = e.id WHERE eu.user_id=%s AND e.is_deleted=False AND e.datetime>%s "
+                               "AND eu.is_deleted=False",
                                (user_id, datetime.now()))
                 events = cursor.fetchall()
 
