@@ -43,6 +43,12 @@
             display: inline-block;
             margin-right: 15px;
         }
+
+        .photo-preview img {
+            width: 100%;
+            height: 200px;
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -67,10 +73,18 @@
                     <div class="account-info mb-4">
                         <div class="text-center">
                             <div>
-                                <img id="profile-image" class="rounded-circle" src="default-profile.png" alt="Фото профиля" style="width: 100px; height: 100px; object-fit: cover;">
-                            </div>
-                            <input type="file" id="upload-image" accept="image/*" style="display: none;">
-                            <button class="btn btn-primary" onclick="document.getElementById('upload-image').click()">Загрузить фото</button>
+                            <img id="profile-image" class="rounded-circle" src="default-profile.png" alt="Фото профиля"
+                                 style="width: 100px; height: 100px; object-fit: cover;">
+                        </div>
+                        <input type="file" id="upload-image" accept="image/*" style="display: none;"
+                               onchange="uploadPhoto()">
+                        <button class="btn btn-primary" onclick="document.getElementById('upload-image').click()">
+                            Загрузить фото
+                        </button>
+                        <button class="btn btn-primary" onclick="fetchUserPhotos()">Просмотреть фотографии</button>
+                        <button class="btn btn-primary" onclick="fetchUserPhotosForProfile()">Установить фото профиля
+                        </button>
+                        <button class="btn btn-danger" onclick="fetchUserPhotosForDeletion()">Удалить фото</button>
                         </div>
                         <h4 class="mb-3 mt-4">Информация о пользователе</h4>
                         <ul class="list-group" id="user-info">
@@ -189,6 +203,22 @@
             </div>
         </div>
     </div>
+<!-- Модальное окно для просмотра фотографий -->
+<div class="modal fade" id="photosModal" tabindex="-1" aria-labelledby="photosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="photosModalLabel">Ваши фотографии</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="photos-container" class="row"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
@@ -264,7 +294,7 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             const token = localStorage.getItem('access_token');
-            console.log('Токен:', token); // Проверка токена в консоли
+            
 
             if (!token) {
                 alert('Необходима авторизация');
@@ -295,15 +325,269 @@
                 document.getElementById('user-position').innerText = data.position;
                 document.getElementById('user-height').innerText = data.height;
                 document.getElementById('user-biography').innerText = data.biography;
-                if (data.profile_image) {
-                    document.getElementById('profile-image').src = data.profile_image;
-                }
             })
             .catch(error => {
                 console.error('Ошибка:', error);
                 alert('Не удалось загрузить информацию о пользователе');
             });
         });
+
+
+        function uploadPhoto() {
+            const input = document.getElementById('upload-image');
+            const file = input.files[0];
+            const token = localStorage.getItem('access_token');
+    
+            if (!file) {
+                alert('Выберите файл для загрузки');
+                return;
+            }
+    
+            const formData = new FormData();
+            formData.append('file', file);
+    
+            fetch('http://195.133.201.168:8000/photos/upload_photo/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Ошибка при загрузке фотографии');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(data.detail);
+                    console.log('Фото загружено:', data);
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    alert('Не удалось загрузить фото');
+                });
+    }
+
+
+    function loadProfileImage() {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            return;
+        }
+
+        fetch('http://195.133.201.168:8000/photos/profile_photo/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при получении фотографии');
+                }
+                return response.json();
+            })
+            .then(profileImage => {
+                document.getElementById('profile-image').src = profileImage;
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить фотографии');
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProfileImage);
+
+
+    function fetchUserPhotos() {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            return;
+        }
+
+        fetch('http://195.133.201.168:8000/photos/user_photos/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при получении фотографий');
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayPhotos(data.photos, false, false);
+                $('#photosModal').modal('show');
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить фотографии');
+            });
+    }
+
+
+    function fetchUserPhotosForDeletion() {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            return;
+        }
+
+        fetch('http://195.133.201.168:8000/photos/user_photos/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при получении фотографий');
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayPhotos(data.photos, false, true);
+                $('#photosModal').modal('show');
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить фотографии');
+            });
+    }
+
+    function fetchUserPhotosForProfile() {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            return;
+        }
+
+        fetch('http://195.133.201.168:8000/photos/user_photos/', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при получении фотографий');
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayPhotos(data.photos, true, false);
+                $('#photosModal').modal('show');
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось загрузить фотографии');
+            });
+    }
+
+    function displayPhotos(photos, isProfilePhotoSelection = false, isForDeletion = false) {
+        const container = isForDeletion ? document.getElementById('photos-container') : document.getElementById('photos-container');
+        container.innerHTML = '';
+
+        if (!photos || photos.length === 0) {
+            container.innerHTML = '<p>Нет доступных фотографий.</p>';
+            return;
+        }
+
+        photos.forEach(photo => {
+            const col = document.createElement('div');
+            col.className = 'col-md-4 mb-3';
+            col.innerHTML = `
+            <div class="photo-preview">
+                <img src="${photo.photo}" class="img-fluid rounded" alt="Фото"
+                    style="cursor: ${isProfilePhotoSelection || isForDeletion ? 'pointer' : 'default'};"
+                    onclick="${isProfilePhotoSelection ? `setProfilePhoto(${photo.id})` : isForDeletion ? `confirmDeletePhoto(${photo.id})` : ''}"
+                />
+            </div>
+        `;
+            container.appendChild(col);
+        });
+    }
+
+    function confirmDeletePhoto(photoId) {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            return;
+        }
+
+        if (confirm('Вы уверены, что хотите удалить это фото?')) {
+            fetch(`http://195.133.201.168:8000/photos/delete_photo/${photoId}/`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Ошибка при удалении фотографии');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(data.detail);
+                    $('#deletePhotoModal').modal('hide');
+                    fetchUserPhotosForDeletion();
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    alert('Не удалось удалить фото');
+                });
+        }
+    }
+
+
+    function setProfilePhoto(photoId) {
+        const token = localStorage.getItem('access_token');
+
+        if (!token) {
+            alert('Необходима авторизация');
+            return;
+        }
+
+        fetch(`http://195.133.201.168:8000/photos/set_profile_photo/?photo_id=${photoId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка при установке фото профиля');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.detail);
+                document.getElementById('profile-image').src = `http://195.133.201.168:8000/photos/profile_photo/`;
+                $('#photosModal').modal('hide');
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Не удалось установить фото профиля');
+            });
+    }
+        
 
         function logout() {
             console.log("Выход...");
