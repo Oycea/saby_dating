@@ -2,7 +2,6 @@ import base64
 import imghdr
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
-from typing import Dict, Any
 from datetime import datetime
 from io import BytesIO
 from routers.session import open_conn
@@ -19,6 +18,26 @@ async def upload_photo(file: UploadFile = File(...), current_user: User = Depend
 
         with open_conn() as connection:
             with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT id FROM users_images 
+                    WHERE user_id = %s AND image = %s AND is_deleted = true
+                    """,
+                    (current_user.id, file_data)
+                )
+                existing_photo = cursor.fetchone()
+
+                if existing_photo:
+                    cursor.execute(
+                        """
+                        UPDATE users_images 
+                        SET is_deleted = false, created_at = %s 
+                        WHERE id = %s
+                        """,
+                        (datetime.utcnow(), existing_photo[0])
+                    )
+                    return {"detail": "Фотография восстановлена"}
+
                 cursor.execute(
                     """
                     INSERT INTO users_images (user_id, image, is_profile_image, created_at)
@@ -71,7 +90,7 @@ def get_profile_image(current_user: User = Depends(get_current_user)):
     try:
         with open_conn() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT image FROM users_images WHERE user_id = %s AND is_profile_image = TRUE",
+                cursor.execute("SELECT image FROM users_images WHERE user_id = %s AND is_profile_image = TRUE AND is_deleted = false",
                                (current_user.id,))
                 profile_image_data = cursor.fetchone()
                 if profile_image_data is None:
@@ -103,7 +122,7 @@ def get_user_photos(current_user: User = Depends(get_current_user)):
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT id, image FROM users_images WHERE user_id = %s", (current_user.id,))
+                cursor.execute("SELECT id, image FROM users_images WHERE user_id = %s AND is_deleted = false", (current_user.id,))
                 photos_data = cursor.fetchall()
                 if not photos_data:
                     raise HTTPException(
@@ -134,12 +153,12 @@ def get_user_photos(current_user: User = Depends(get_current_user)):
         )
 
 
-@photos_router.delete("/delete_photo/{photo_id}/", status_code=status.HTTP_200_OK)
+@photos_router.put("/delete_photo/{photo_id}/", status_code=status.HTTP_200_OK)
 def delete_photo(photo_id: int, current_user: User = Depends(get_current_user)):
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM users_images WHERE id = %s AND user_id = %s",
+                cursor.execute("UPDATE users_images SET is_deleted = true WHERE id = %s AND user_id = %s",
                                (photo_id, current_user.id))
                 if cursor.rowcount == 0:
                     raise HTTPException(
