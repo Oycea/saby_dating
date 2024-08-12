@@ -198,7 +198,7 @@ def get_users_events(current_user: User = Depends(get_current_user)) -> Dict[str
 
 
 @event_router.get('/get_creator_events', name='Get events in which this user is creator')
-def get_users_events(current_user: User = Depends(get_current_user)) -> Dict[str, int | Any]:
+def get_creator_events(current_user: User = Depends(get_current_user)) -> Dict[str, int | Any]:
     """
         Предоставляет информацию о мероприятиях, которые организовал данный пользователь
 
