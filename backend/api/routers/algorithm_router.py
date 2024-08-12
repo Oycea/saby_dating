@@ -423,3 +423,19 @@ def all_info(user_id: int) -> dict[str, list]:
                         "All interests": all_interests}
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
+
+
+@algorithm_router.put('/reset_filters/', name='reset all filters')
+def reset_filters(current_user: User = Depends(get_current_user)) -> dict[str, int]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                user_id = current_user.id
+                cursor.execute("UPDATE filters SET age_min = null, age_max = null, height_min = null, height_max = null, "
+                               "communication_id = null, target_id = null,"
+                               "gender_id = null, city = null "
+                               "WHERE user_id = %s", (user_id,))
+                cursor.execute("UPDATE filters_interests SET is_deleted = true WHERE user_id = %s", (user_id,))
+                return {"Filters have been cleared for a user with an id": user_id}
+    except Exception as ex:
+        raise HTTPException(status_code=500, detail=str(ex))
