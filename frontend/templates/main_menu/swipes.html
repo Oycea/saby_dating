@@ -60,7 +60,7 @@
                 </div>
             </nav>
             <main class="col-md-8">
-                <div class="bg-white p-4 rounded shadow-sm text-center">
+                <div class="bg-white p-4 rounded text-center">
                     <h2 class="text-primary mb-4">Свайпы</h2>
                     <div class="card-container" id="cardContainer">
                         <!-- Карточки будут динамически добавляться сюда -->
@@ -203,10 +203,9 @@
             }
         }
 
-        function createCard(data) {
+        function createCard(data, userPhotos) {
             const cardContainer = document.getElementById('cardContainer');
             const userInfo = data["Information about user"];
-            const userPhotos = data["All photos"];
             const userInterests = data["All interests"];
 
             const card = document.createElement('div');

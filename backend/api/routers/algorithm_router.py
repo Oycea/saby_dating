@@ -105,7 +105,7 @@ def create_like(user_like_to: int, current_user: User = Depends(get_current_user
                 if new_match:
                     cursor.execute(
                         "SELECT * FROM dialogues WHERE ((user1_id = %s AND user2_id = %s) OR (user1_id = %s AND "
-                        "user2_id = %s)) AND is_deleted = false")
+                        "user2_id = %s)) AND is_deleted = false", (user_like_to, user_like_from, user_like_from, user_like_to,))
                     if not cursor.fetchall():
                         cursor.execute("INSERT INTO dialogues (user1_id, user2_id) VALUES(%s, %s)",
                                        (user_like_from, user_like_to))
@@ -113,8 +113,6 @@ def create_like(user_like_to: int, current_user: User = Depends(get_current_user
                     return {"The dialogue already exists, like has been set": [user_like_from, user_like_to]}
                 else:
                     return {'The like has been set': new_likes}
-    except psycopg2.IntegrityError:
-        raise HTTPException(status_code=400, detail="The user has already been liked")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
@@ -133,8 +131,6 @@ def create_dislike(user_dislike_to: int, current_user: User = Depends(get_curren
                 if not new_dislikes:
                     raise HTTPException(status_code=404, detail="user_dislike_from/user_dislike_to not found")
                 return {'The dislike has been set': new_dislikes}
-    except psycopg2.IntegrityError:
-        raise HTTPException(status_code=400, detail="The user has already been disliked")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
