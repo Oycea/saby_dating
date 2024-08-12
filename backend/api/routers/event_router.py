@@ -520,7 +520,7 @@ def delete_user_from_the_event(event_id: int, current_user: User = Depends(get_c
                     raise HTTPException(status_code=404, detail="Event not found")
 
                 if creator_id == user_id:
-                    return {'message': f'Can not delete creator from users List'}
+                    raise HTTPException(status_code=400, detail="Can not delete creator from users List")
 
                 cursor.execute("UPDATE events_users SET is_deleted=True WHERE event_id=%s AND user_id=%s RETURNING *",
                                (event_id, user_id))
