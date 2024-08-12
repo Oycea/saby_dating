@@ -16,7 +16,7 @@ def get_user_info_by_id(id: int):
     try:
         with open_conn() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT name FROM users WHERE id = %s", (id,))
+                cursor.execute("SELECT name FROM users WHERE id = %s AND is_deleted = false", (id,))
                 name = cursor.fetchone()[0]
                 if name is None:
                     raise HTTPException(status_code=404, detail="Имя пользователя не найдено")
@@ -32,7 +32,7 @@ def get_profile_image(id: int):
     try:
         with open_conn() as conn:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT image FROM users_images WHERE user_id = %s AND is_profile_image = TRUE", (id,))
+                cursor.execute("SELECT image FROM users_images WHERE user_id = %s AND is_profile_image = TRUE AND is_deleted = false", (id,))
                 profile_image_data = cursor.fetchone()
                 if profile_image_data is None:
                     raise HTTPException(status_code=404, detail="Фото профиля не найдено")
@@ -55,13 +55,13 @@ def get_chat_page(dialogue_id: int, offset: int = 0, limit: int = 30, current_us
             with conn.cursor() as cursor:
                 self_user = json.loads(current_user.json())  # Преобразование строки в объект
                 cursor.execute(
-                    "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date FROM messages WHERE dialogue_id = %s ORDER BY id DESC LIMIT %s OFFSET %s",
+                    "SELECT user_id, message, TO_CHAR(date, 'HH24:MI') as date, id FROM messages WHERE dialogue_id = %s AND is_deleted = false ORDER BY id DESC LIMIT %s OFFSET %s",
                     (dialogue_id, limit, offset))
-                limited_result = cursor.fetchall()  # Возвращает кортеж user_id, message и date
+                limited_result = cursor.fetchall()  # Возвращает кортеж user_id, message, date и id сообщения
                 if limited_result is None:
                     raise HTTPException(status_code=404, detail="Сообщения не найдены.")
 
-                cursor.execute("SELECT message FROM messages")
+                cursor.execute("SELECT message FROM messages WHERE is_deleted = false")
                 full_result = cursor.fetchall()
                 if full_result is None:
                     raise HTTPException(status_code=404, detail="Сообщения не найдены.")
@@ -78,7 +78,7 @@ def get_chat_page(dialogue_id: int, offset: int = 0, limit: int = 30, current_us
                                     FROM 
                                         dialogues
                                     WHERE 
-                                        id = %s
+                                        id = %s AND is_deleted = false
                                 """,
                                (self_user['id'], self_user['id'], dialogue_id))  # Возвращает id другого пользователя
                 other_user_id = cursor.fetchone()[0]
@@ -87,9 +87,9 @@ def get_chat_page(dialogue_id: int, offset: int = 0, limit: int = 30, current_us
                 other_user = get_user_info_by_id(other_user_id)  # Возвращает имя и фото другого пользователя
 
                 return {"limited_result": limited_result, "full_result_len": full_result_len, 'self_user': self_user,
-                        'profile_image': profile_image,
-                        'other_user': other_user,
-                        'dialogue_id': dialogue_id}
+                                                                                     'profile_image': profile_image,
+                                                                                     'other_user': other_user,
+                                                                                     'dialogue_id': dialogue_id}
     except Exception as ex:
         print(f"Error occurred: {ex}")
         raise HTTPException(status_code=500, detail=str(ex))
@@ -112,7 +112,7 @@ def get_dialogues_page(current_user: User = Depends(get_current_user)):
                                     FROM 
                                         dialogues
                                     WHERE 
-                                        user1_id = %s OR user2_id = %s
+                                        (user1_id = %s OR user2_id = %s) AND is_deleted = false
                                 """,
                                (self_user['id'], self_user['id'], self_user['id'], self_user['id']))
                 dialogues = cursor.fetchall()  # Возвращает id диалога и id всех собеседников пользователя
@@ -127,6 +127,17 @@ def get_dialogues_page(current_user: User = Depends(get_current_user)):
                 return {"dialogues": dialogues, "other_user": other_user}
     except Exception as ex:
         print(f"Error occurred: {ex}")
+        raise HTTPException(status_code=500, detail=str(ex))
+
+
+@pages_router.put("/delete_dialogue/{dialogueId}", name="delete_dialogue")
+def delete_dialogue(dialogueId: int):
+    try:
+        with open_conn() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("UPDATE dialogues SET is_deleted = true WHERE id = %s", (dialogueId,))
+                return {"detail": "Диалог успешно удалён"}
+    except Exception as ex:
         raise HTTPException(status_code=500, detail=str(ex))
 
 
