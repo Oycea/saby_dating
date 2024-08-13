@@ -61,11 +61,11 @@ def get_chat_page(dialogue_id: int, offset: int = 0, limit: int = 30, current_us
                 if limited_result is None:
                     raise HTTPException(status_code=404, detail="Сообщения не найдены.")
 
-                cursor.execute("SELECT message FROM messages WHERE is_deleted = false")
+                cursor.execute("SELECT message FROM messages WHERE is_deleted = false AND dialogue_id = %s", (dialogue_id,))
                 full_result = cursor.fetchall()
                 if full_result is None:
                     raise HTTPException(status_code=404, detail="Сообщения не найдены.")
-                full_result_len = len(full_result)  # Возвращает кол-во всех сообщений
+                full_result_len = len(full_result)  # Возвращает кол-во всех сообщений в диалоге
 
                 profile_image = get_profile_image(self_user['id'])
 
