@@ -138,6 +138,7 @@
         </div>
     </div>
     <script>
+    
         document.getElementById('edit-profile-form').addEventListener('submit', function(event) {
             event.preventDefault(); // Предотвращаем обычное отправление формы
 
@@ -150,6 +151,52 @@
             const target_id = document.getElementById('target_id').value || undefined;
             const communication_id = document.getElementById('communication_id').value || undefined;
             const biography = document.getElementById('biography').value || undefined;
+            const position = document.getElementById('position').value || undefined; // Добавлено получение должности
+
+            if (name !== undefined && (name.length < 2 || name.length > 50)) {
+                alert('Имя должно быть длиной от 2 до 50 символов.');
+                return;
+            }
+
+            // Проверка длины должности
+            if (position !== undefined && (position.length < 2 || position.length > 100)) {
+                alert('Должность должна быть длиной от 2 до 100 символов.');
+                return;
+            }
+
+            if (height !== undefined && (height > 300 || height < 50)) {
+                alert('Рост должен быть в пределах от 50 до 300 см.');
+                return;
+            }
+
+            // Проверка возраста
+            if (birthday) {
+                const birthDate = new Date(birthday);
+                const today = new Date();
+
+                if (birthDate > today) {
+                    alert('Дата рождения не может быть в будущем.');
+                    return;
+                }
+
+                const age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+
+                if (age < 16 || age > 200) {
+                    alert('Возраст должен быть в пределах от 16 до 200 лет');
+                    return;
+                }
+            }
+
+            // Проверка длины поля "о себе"
+            if (biography !== undefined && (biography.length > 500)) {
+                alert('Информация о себе не должна превышать 500 символов.');
+                return;
+            }
 
             // Создаем объект с данными для отправки
             const data = {};
