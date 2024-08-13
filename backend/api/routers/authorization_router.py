@@ -1,7 +1,8 @@
 import time
+import secrets
 from datetime import date, datetime, timedelta
-from typing import Dict, Any, Optional
-
+from typing import Dict, Any, Optional, List
+from fastapi.params import Body
 from email_validator import validate_email, EmailNotValidError
 from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, APIRouter, Query, Form
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
@@ -12,8 +13,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from routers.session import open_conn
+from utils import send_message_email_verification
+
 
 authorization_router = APIRouter(prefix='/authorization', tags=['Authorization'])
+
+
+class Interest(BaseModel):
+    id: int
+    subject: str
+    title: str
 
 
 class User(BaseModel):
@@ -27,10 +36,13 @@ class User(BaseModel):
     gender_id: int
     target_id: int
     communication_id: int
+    interests: List[Interest] = []
     biography: Optional[str] = None
+    profile_image: Optional[str] = None
+    is_deleted: bool = False
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login/")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="authorization/login")
 app = FastAPI()
 
 
@@ -43,20 +55,69 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def check_password(password: str) -> None:
-    if len(password) < 8:
+    if len(password) < 8 or len(password) > 16:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать не менее 8 символов"
+            detail="Пароль должен содержать не менее 8 и не более 16 символов."
         )
     if not any(symbol.isalpha() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать хотя бы одну букву"
+            detail="Пароль должен содержать хотя бы одну букву."
         )
     if not any(symbol.isdigit() for symbol in password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Пароль должен содержать хотя бы одну цифру"
+            detail="Пароль должен содержать хотя бы одну цифру."
+        )
+
+
+def check_username(name: str) -> None:
+    if len(name) < 2 or len(name) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Имя должно содержать от 2 до 50 символов."
+        )
+
+
+def check_birthday(birthday: date) -> None:
+    today = date.today()
+    age = today.year - birthday.year - (
+                (today.month, today.day) < (birthday.month, birthday.day))
+    if age < 16:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Возраст пользователя должен быть не менее 16 лет."
+        )
+
+    if birthday > today:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Дата рождения не может быть в будущем."
+        )
+
+
+def check_position(position: str) -> None:
+    if len(position) < 2 or len(position) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Должность должна содержать от 2 до 100 символов."
+        )
+
+
+def check_height(height: int) -> None:
+    if height < 50 or height > 300:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Рост должен быть в диапазоне от 50 до 300 см."
+        )
+
+
+def check_biography(biography: Optional[str]) -> None:
+    if biography and len(biography) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Информация о себе не должна превышать 500 символов. "
         )
 
 
@@ -72,6 +133,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     return encoded_jwt
 
 
+@authorization_router.get('/get_current_user')
 def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
     try:
         payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -85,7 +147,7 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT id, email, name, city, birthday, position, height, gender_id, target_id, "
-                               "communication_id, biography, password FROM users WHERE email = %s",
+                               "communication_id, biography, password, is_deleted FROM users WHERE email = %s",
                                (email,)
                                )
                 user_data = cursor.fetchone()
@@ -95,6 +157,19 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                         detail="Не удалось подтвердить данные",
                         headers={"WWW-Authenticate": "Basic"},
                     )
+                cursor.execute(
+                    "SELECT i.id, i.subject, i.title FROM users_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = %s",
+                    (user_data[0],))
+                interests = [Interest(id=interest[0], subject=interest[1],
+                                      title=interest[2]) for interest in
+                             cursor.fetchall()]
+
+                cursor.execute(
+                    "SELECT id FROM users_images WHERE user_id = %s AND is_profile_image = TRUE",
+                    (user_data[0],)
+                    )
+                profile_image = cursor.fetchone()
+
                 user = User(
                     id=user_data[0],
                     email=user_data[1],
@@ -106,7 +181,10 @@ def get_current_user(jwt_token: str = Depends(oauth2_scheme)) -> User:
                     gender_id=user_data[7],
                     target_id=user_data[8],
                     communication_id=user_data[9],
-                    biography=user_data[10]
+                    interests=interests,
+                    biography=user_data[10],
+                    profile_image=f"/photos/profile_photo/?user_id={user_data[0]}" if profile_image else None,
+                    is_deleted=user_data[12]
                 )
                 return user
     except JWTError:
@@ -128,22 +206,104 @@ def read_user_me_dict(current_user: User = Depends(get_current_user)) -> Dict[st
     return current_user.dict()
 
 
+@authorization_router.get('/interests/', response_model=List[Interest],
+                          name="Получение списка интересов")
+def get_interests() -> List[Interest]:
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, subject, title FROM interests")
+                interests = cursor.fetchall()
+                return [Interest(id=interest[0], subject=interest[1], title=interest[2]) for interest in interests]
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+temp_storage = {}
+
+
+@authorization_router.get("/confirm/{token}")
+def confirm_email(token: str) -> Dict[str, str]:
+    user_data = temp_storage.get(token)
+    if not user_data:
+        raise HTTPException(status_code=404, detail="Invalid or expired token")
+    user_values = (
+        user_data["email"],
+        user_data["password"],
+        user_data["name"],
+        user_data["city"],
+        user_data["birthday"],
+        user_data["position"],
+        user_data["height"],
+        user_data["gender_id"],
+        user_data["target_id"],
+        user_data["communication_id"],
+        user_data["biography"]
+    )
+    interests_value = user_data["interests"]
+
+    insert_query = """
+                        INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, communication_id, biography)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                    """
+    filters_query = """
+                            INSERT INTO filters (user_id, age_min, age_max, height_min, height_max, communication_id, target_id, gender_id, city, is_deleted)
+                            VALUES (%s, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+                        """
+
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(insert_query, user_values)
+                user_id = cursor.fetchone()[0]
+                cursor.execute(filters_query, (user_id,))
+                if interests_value:
+                    interests_query = """
+                                        INSERT INTO users_interests (user_id, interest_id)
+                                        VALUES (%s, (SELECT id FROM interests WHERE title = %s))
+                                    """
+                    cursor.executemany(
+                        interests_query,
+                        [(user_id, interest) for interest in interests_value]
+                    )
+                connection.commit()
+                del temp_storage[token]
+                access_token = create_access_token(data={"sub": user_data["email"]})
+                return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
 @authorization_router.post('/register/', status_code=status.HTTP_200_OK,
                            name='Регистрация нового пользователя')
 def register(email: EmailStr, password: str, name: str, city: str,
              birthday: date, position: str, height: int, gender_id: int,
-             target_id: int, communication_id: int, biography: Optional[str] = None) -> Dict[str, str]:
+             target_id: int, communication_id: int,
+             interests: Optional[List[str]] = Query(None), biography: Optional[str] = None):
     try:
         # Проверка корректности email
-        validated_email = validate_email(email)
-        email = validated_email.email
-    except EmailNotValidError as ex:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Неверный адрес электронной почты: {str(ex)}"
-        )
-    check_password(password)
-    try:
+        try:
+            validated_email = validate_email(email)
+            email = validated_email.email
+        except EmailNotValidError as ex:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Неверный адрес электронной почты: {str(ex)}"
+            )
+        check_password(password)
+        check_username(name)
+        check_birthday(birthday)
+        check_position(position)
+        check_height(height)
+        check_biography(biography)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 # Проверка email
@@ -155,19 +315,24 @@ def register(email: EmailStr, password: str, name: str, city: str,
                         detail="Почта уже зарегистрирована"
                     )
 
+                token = secrets.token_urlsafe(16)
                 hashed_password = get_password_hash(password)
-                cursor.execute(
-                    """
-                    INSERT INTO users (email, password, name, city, birthday, position, height, gender_id, target_id, 
-                    communication_id, biography)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING *
-                    """,
-                    (email, hashed_password, name, city, birthday, position,
-                     height, gender_id, target_id, communication_id, biography)
-                )
-                access_token = create_access_token(data={"sub": email})
-                return {"access_token": access_token, "token_type": "bearer"}
+                temp_storage[token] = {
+                    "email": email,
+                    "password": hashed_password,
+                    "name": name, "city": city,
+                    "birthday": birthday,
+                    "position": position,
+                    "height": height,
+                    "gender_id": gender_id,
+                    "target_id": target_id,
+                    "communication_id": communication_id,
+                    "interests": interests,
+                    "biography": biography
+
+                }
+                send_message_email_verification(email,token)
+                return "message:" " Подтвердите регистрацию на почте "
     except Exception as ex:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -175,7 +340,7 @@ def register(email: EmailStr, password: str, name: str, city: str,
         )
 
 
-@authorization_router.post('/login/', response_model=Dict[str, str], name='Вход в систему')
+@authorization_router.post('/login', response_model=Dict[str, str], name='Вход в систему')
 def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
     email = form_data.username
     password = form_data.password
@@ -183,12 +348,19 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT password FROM users WHERE email = %s", (email,))
+                cursor.execute("SELECT password, is_deleted FROM users WHERE email = %s", (email,))
                 user_data = cursor.fetchone()
                 if user_data is None:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Неверные почта или пароль",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+
+                if user_data[1]:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Профиль удалён",
                         headers={"WWW-Authenticate": "Bearer"},
                     )
 
@@ -209,20 +381,73 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Dict[str, str]:
         )
 
 
-@authorization_router.patch('/profile/', response_model=User, name='Обновление профиля')
+@authorization_router.post('/profile/interest/', status_code=status.HTTP_200_OK,
+                           name="Добавление нового интереса для пользователя")
+def add_interest(interest_title: str, current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id FROM interests WHERE title = %s",
+                               (interest_title,))
+                new_interest = cursor.fetchone()
+                if not new_interest:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Интерес не найден"
+                    )
+                interest_id = new_interest[0]
+                cursor.execute("SELECT * FROM users_interests WHERE user_id = %s AND interest_id = %s",
+                               (current_user.id, interest_id))
+                if cursor.fetchone():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Этот интерес уже добавлен"
+                    )
+                cursor.execute("INSERT INTO users_interests(user_id, interest_id) VALUES (%s, %s)",
+                               (current_user.id, interest_id))
+                return {"detail": "Интерес добавлен"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера {str(ex)}"
+        )
+
+
+@authorization_router.patch('/update_profile', response_model=User, name='Обновление профиля')
 def update_profile(
         current_user: User = Depends(get_current_user),
-        email: Optional[EmailStr] = Query(None),
-        name: Optional[str] = Query(None),
-        city: Optional[str] = Query(None),
-        birthday: Optional[date] = Query(None),
-        position: Optional[str] = Query(None),
-        height: Optional[int] = Query(None),
-        gender_id: Optional[int] = Query(None),
-        target_id: Optional[int] = Query(None),
-        communication_id: Optional[int] = Query(None),
-        biography: Optional[str] = Query(None)) -> User:
+        email: Optional[EmailStr] = Body(None),
+        name: Optional[str] = Body(None),
+        city: Optional[str] = Body(None),
+        birthday: Optional[date] = Body(None),
+        position: Optional[str] = Body(None),
+        height: Optional[int] = Body(None),
+        gender_id: Optional[int] = Body(None),
+        target_id: Optional[int] = Body(None),
+        communication_id: Optional[int] = Body(None),
+        biography: Optional[str] = Body(None)) -> User:
     try:
+        if email:
+            try:
+                validated_email = validate_email(email)
+                email = validated_email.email
+            except EmailNotValidError as ex:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Неверный адрес электронной почты: {str(ex)}"
+                )
+
+            if name:
+                check_username(name)
+            if birthday:
+                check_birthday(birthday)
+            if position:
+                check_position(position)
+            if height:
+                check_height(height)
+            if biography:
+                check_biography(biography)
+
         with open_conn() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(
@@ -270,7 +495,16 @@ def update_profile(
                      current_user.id)
                 )
 
+                cursor.execute(
+                    """
+                    SELECT id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography 
+                    FROM users WHERE id = %s
+                    """,
+                    (current_user.id,))
+
                 new_info = cursor.fetchone()
+
                 if not new_info:
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -344,7 +578,16 @@ def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
     try:
         with open_conn() as connection:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM users WHERE id = %s", (current_user.id,))
+                cursor.execute(
+                    """
+                    UPDATE users
+                    SET is_deleted = %s
+                    WHERE id = %s
+                    RETURNING id, email, name, city, birthday, position, height, gender_id, target_id, communication_id, 
+                    biography
+                    """,
+                    (True, current_user.id)
+                )
                 if cursor.rowcount == 0:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -355,6 +598,27 @@ def delete_profile(current_user: User = Depends(get_current_user)) -> Response:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Внутренняя ошибка сервера: {str(ex)}"
+        )
+
+
+@authorization_router.delete('/profile/interest/{interest_id}', status_code=status.HTTP_200_OK,
+                             name="Удаление интереса")
+def delete_interest(interest_id: int, current_user: User = Depends(get_current_user)):
+    try:
+        with open_conn() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM users_interests WHERE user_id = %s AND interest_id = %s",
+                               (current_user.id, interest_id))
+                if cursor.rowcount == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Интерес не найден"
+                    )
+                return {"detail": "Успешное удаление"}
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутреннняя ошибка сервера: {str(ex)}"
         )
 
 
