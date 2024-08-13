@@ -196,13 +196,19 @@
             // Проверка возраста
             const today = new Date();
             const birthDate = new Date(birthday);
+
+            if (birthDate > today) {
+                alert('Дата рождения не может быть в будущем.');
+                return;
+            }
+            
             let age = today.getFullYear() - birthDate.getFullYear();
             const monthDifference = today.getMonth() - birthDate.getMonth();
             if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
                 age--;
             }
 
-            if (age < 18 || age > 200) {
+            if (age < 16 || age > 200) {
                 alert('Возраст должен быть от 18 до 200 лет.');
                 return;
             }
