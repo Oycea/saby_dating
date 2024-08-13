@@ -106,7 +106,7 @@
                     <input type="text" class="form-control" id="position" placeholder="Введите вашу должность" required>
                 </div>
                 <div class="form-group">
-                    <label for="height">Рост</label>
+                    <label for="height">Рост (см)</label>
                     <input type="number" class="form-control" id="height" placeholder="Введите ваш рост" required>
                 </div>
                 <div class="form-group">
@@ -162,11 +162,52 @@
             const target_id = document.getElementById('target_id').value;
             const communication_id = document.getElementById('communication_id').value;
 
+            // Проверка совпадения паролей
             if (password !== confirmPassword) {
                 alert('Пароли не совпадают.');
                 return;
             }
 
+            // Проверка пароля: наличие хотя бы одной буквы и одной цифры
+            const passwordPattern = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,16}$/;
+            if (!passwordPattern.test(password)) {
+                alert('Пароль должен содержать хотя бы одну букву и одну цифру, и быть длиной от 8 до 16 символов.');
+                return;
+            }
+
+            // Проверка длины имени
+            if (name.length < 2 || name.length > 50) {
+                alert('Имя должно быть длиной от 2 до 50 символов.');
+                return;
+            }
+
+            // Проверка длины должности
+            if (position.length < 2 || position.length > 100) {
+                alert('Должность должна быть длиной от 2 до 100 символов.');
+                return;
+            }
+
+            // Проверка роста
+            if (height < 50 || height > 300) {
+                alert('Рост должен быть в пределах от 50 до 300 см.');
+                return;
+            }
+
+            // Проверка возраста
+            const today = new Date();
+            const birthDate = new Date(birthday);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDifference = today.getMonth() - birthDate.getMonth();
+            if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            if (age < 18 || age > 200) {
+                alert('Возраст должен быть от 18 до 200 лет.');
+                return;
+            }
+
+            // Формирование URL и отправка данных
             const url = `http://195.133.201.168:8000/authorization/register/?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}&birthday=${encodeURIComponent(birthday)}&position=${encodeURIComponent(position)}&height=${encodeURIComponent(height)}&gender_id=${encodeURIComponent(gender_id)}&target_id=${encodeURIComponent(target_id)}&communication_id=${encodeURIComponent(communication_id)}`;
 
             fetch(url, {
