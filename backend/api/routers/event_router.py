@@ -210,7 +210,7 @@ def get_creator_events(current_user: User = Depends(get_current_user)) -> Dict[s
         with open_conn() as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 user_id = current_user.id
-                cursor.execute("SELECT * FROM events WHERE creator_id=%s",
+                cursor.execute("SELECT * FROM events WHERE creator_id=%s AND is_deleted=False",
                                (user_id, ))
                 events = cursor.fetchall()
 
