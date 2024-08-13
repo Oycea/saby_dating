@@ -106,10 +106,10 @@ def check_birthday(birthday: date):
     today = date.today()
     age = today.year - birthday.year - (
                 (today.month, today.day) < (birthday.month, birthday.day))
-    if age < 18:
+    if age < 16:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Возраст пользователя должен быть не менее 18 лет."
+            detail="Возраст пользователя должен быть не менее 16 лет."
         )
 
     if birthday > today:
